@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PriorAuthSystem.API/PriorAuthSystem.API.csproj" />
+    <Project Path="src/PriorAuthSystem.Application/PriorAuthSystem.Application.csproj" />
+    <Project Path="src/PriorAuthSystem.Domain/PriorAuthSystem.Domain.csproj" />
+    <Project Path="src/PriorAuthSystem.Infrastructure/PriorAuthSystem.Infrastructure.csproj" />
+    <Project Path="src/PriorAuthSystem.Mobile/PriorAuthSystem.Mobile.csproj" />
+    <Project Path="src/PriorAuthSystem.Web/PriorAuthSystem.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PriorAuthSystem.Application.Tests/PriorAuthSystem.Application.Tests.csproj" />
+    <Project Path="tests/PriorAuthSystem.Domain.Tests/PriorAuthSystem.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
