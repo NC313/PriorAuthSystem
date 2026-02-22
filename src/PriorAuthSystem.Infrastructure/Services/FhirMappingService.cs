@@ -80,7 +80,7 @@ public class FhirMappingService
             Id = priorAuth.Id.ToString(),
             Status = MapToFhirClaimStatus(priorAuth.Status),
             Type = new CodeableConcept("http://terminology.hl7.org/CodeSystem/claim-type", "professional"),
-            //Use = new Code<Use>(Use.Preauthorization),
+            Use = ClaimUseCode.Preauthorization,
             Created = priorAuth.CreatedAt.ToString("yyyy-MM-dd"),
             Patient = new ResourceReference($"Patient/{priorAuth.Patient.Id}"),
             Provider = new ResourceReference($"Practitioner/{priorAuth.Provider.Id}"),
