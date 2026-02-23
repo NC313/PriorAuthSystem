@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PriorAuthSystem.Application\PriorAuthSystem.Application.csproj" />
+    <ProjectReference Include="..\PriorAuthSystem.Infrastructure\PriorAuthSystem.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

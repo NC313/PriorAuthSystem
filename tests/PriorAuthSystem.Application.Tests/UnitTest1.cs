@@ -1,10 +1,1 @@
-﻿namespace PriorAuthSystem.Application.Tests;
-
-public class UnitTest1
-{
-    [Fact]
-    public void Test1()
-    {
-
-    }
-}
+namespace PriorAuthSystem.Application.Tests;
