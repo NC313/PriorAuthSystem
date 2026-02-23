@@ -1,51 +1,85 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using PriorAuthSystem.API.Hubs;
+using PriorAuthSystem.API.Middleware;
 using PriorAuthSystem.Application.Common.Behaviors;
 using PriorAuthSystem.Domain.Interfaces;
 using PriorAuthSystem.Infrastructure.Persistence;
 using PriorAuthSystem.Infrastructure.Repositories;
 using PriorAuthSystem.Infrastructure.Services;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateLogger();
 
-// EF Core - SQL Server LocalDB
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Repositories & Unit of Work
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-
-// Infrastructure services
-builder.Services.AddSingleton<FhirMappingService>();
-builder.Services.AddSingleton<AuditService>();
-
-// MediatR + pipeline behaviors
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(PriorAuthSystem.Application.Common.Behaviors.LoggingBehavior<,>).Assembly));
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-
-// FluentValidation
-builder.Services.AddValidatorsFromAssembly(typeof(PriorAuthSystem.Application.Common.Behaviors.LoggingBehavior<,>).Assembly);
-
-// OpenAPI / Swagger
-builder.Services.AddOpenApi();
-
-var app = builder.Build();
-
-// Seed database
-using (var scope = app.Services.CreateScope())
+try
 {
-    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await DbInitializer.SeedAsync(context);
-}
+    var builder = WebApplication.CreateBuilder(args);
 
-if (app.Environment.IsDevelopment())
+    builder.Host.UseSerilog();
+
+    // EF Core - SQL Server LocalDB
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+    // Repositories & Unit of Work
+    builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+    // Infrastructure services
+    builder.Services.AddSingleton<FhirMappingService>();
+    builder.Services.AddSingleton<AuditService>();
+
+    // MediatR + pipeline behaviors
+    builder.Services.AddMediatR(cfg =>
+        cfg.RegisterServicesFromAssembly(typeof(LoggingBehavior<,>).Assembly));
+    builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+    builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+
+    // FluentValidation
+    builder.Services.AddValidatorsFromAssembly(typeof(LoggingBehavior<,>).Assembly);
+
+    // Controllers
+    builder.Services.AddControllers();
+
+    // OpenAPI / Swagger
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
+
+    // SignalR
+    builder.Services.AddSignalR();
+
+    var app = builder.Build();
+
+    // Seed database
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await DbInitializer.SeedAsync(context);
+    }
+
+    // Global exception handler
+    app.UseMiddleware<GlobalExceptionHandler>();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+
+    app.UseHttpsRedirection();
+
+    app.MapControllers();
+    app.MapHub<PriorAuthHub>("/hubs/prior-auth");
+
+    app.Run();
+}
+catch (Exception ex)
 {
-    app.MapOpenApi();
+    Log.Fatal(ex, "Application terminated unexpectedly");
 }
-
-app.UseHttpsRedirection();
-
-app.Run();
+finally
+{
+    Log.CloseAndFlush();
+}
