@@ -1,0 +1,184 @@
+@page "/prior-auths/{Id:guid}"
+@using PriorAuthSystem.Application.PriorAuthorizations.DTOs
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Prior Auth Detail</PageTitle>
+
+<a href="/prior-auths" class="btn btn-outline-secondary btn-sm mb-3">&larr; Back to List</a>
+
+@if (_loading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (_auth is null)
+{
+    <div class="alert alert-warning">Prior authorization not found.</div>
+}
+else
+{
+    <h3>Prior Authorization Detail</h3>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <dl>
+                        <dt>Patient</dt>
+                        <dd>@_auth.PatientName</dd>
+
+                        <dt>Provider</dt>
+                        <dd>@_auth.ProviderName</dd>
+
+                        <dt>Payer</dt>
+                        <dd>@_auth.PayerName</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    <dl>
+                        <dt>ICD-10 Code</dt>
+                        <dd>@_auth.IcdCode &mdash; @_auth.IcdDescription</dd>
+
+                        <dt>CPT Code</dt>
+                        <dd>@_auth.CptCode &mdash; @_auth.CptDescription</dd>
+
+                        <dt>Current Status</dt>
+                        <dd><span class="badge @GetStatusBadgeClass(_auth.Status)">@_auth.Status</span></dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <dt>Clinical Justification</dt>
+                    <dd class="border rounded p-2 bg-light">@_auth.ClinicalJustification</dd>
+                </div>
+            </div>
+
+            <div class="row mt-2">
+                <div class="col-md-6">
+                    <dt>Submitted</dt>
+                    <dd>@_auth.SubmittedAt.ToString("yyyy-MM-dd HH:mm")</dd>
+                </div>
+                <div class="col-md-6">
+                    <dt>Response Required By</dt>
+                    <dd>@_auth.RequiredResponseBy.ToString("yyyy-MM-dd")</dd>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h4>Status History</h4>
+
+    @if (!_auth.StatusTransitions.Any())
+    {
+        <p class="text-muted">No status transitions recorded yet.</p>
+    }
+    else
+    {
+        <div class="stepper">
+            @foreach (var transition in _auth.StatusTransitions.OrderBy(t => t.TransitionedAt))
+            {
+                <div class="stepper-step d-flex mb-0">
+                    <div class="stepper-indicator d-flex flex-column align-items-center me-3">
+                        <div class="stepper-circle @GetStepCircleClass(transition.ToStatus)"></div>
+                        <div class="stepper-line"></div>
+                    </div>
+                    <div class="stepper-content pb-4">
+                        <div class="fw-bold">
+                            <span class="badge @GetStatusBadgeClass(transition.FromStatus) me-1">@transition.FromStatus</span>
+                            &rarr;
+                            <span class="badge @GetStatusBadgeClass(transition.ToStatus) ms-1">@transition.ToStatus</span>
+                        </div>
+                        <small class="text-muted">@transition.TransitionedAt.ToString("yyyy-MM-dd HH:mm") &middot; @transition.TransitionedBy</small>
+                        @if (!string.IsNullOrWhiteSpace(transition.Notes))
+                        {
+                            <p class="mb-0 mt-1">@transition.Notes</p>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+<style>
+    .stepper-circle {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background-color: #6c757d;
+        flex-shrink: 0;
+    }
+
+    .stepper-circle.circle-success {
+        background-color: #198754;
+    }
+
+    .stepper-circle.circle-danger {
+        background-color: #dc3545;
+    }
+
+    .stepper-circle.circle-warning {
+        background-color: #ffc107;
+    }
+
+    .stepper-circle.circle-info {
+        background-color: #0dcaf0;
+    }
+
+    .stepper-line {
+        width: 2px;
+        flex-grow: 1;
+        background-color: #dee2e6;
+        min-height: 20px;
+    }
+
+    .stepper-step:last-child .stepper-line {
+        display: none;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private PriorAuthDto? _auth;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("PriorAuthApi");
+            _auth = await client.GetFromJsonAsync<PriorAuthDto>($"api/prior-authorizations/{Id}");
+        }
+        catch
+        {
+            _auth = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string GetStatusBadgeClass(string status) => status switch
+    {
+        "Pending" or "Submitted" => "bg-warning text-dark",
+        "Approved" => "bg-success",
+        "Denied" => "bg-danger",
+        "InReview" => "bg-info",
+        "AdditionalInfoRequired" => "bg-primary",
+        _ => "bg-secondary"
+    };
+
+    private static string GetStepCircleClass(string status) => status switch
+    {
+        "Approved" => "circle-success",
+        "Denied" => "circle-danger",
+        "Pending" or "Submitted" => "circle-warning",
+        "InReview" => "circle-info",
+        _ => ""
+    };
+}

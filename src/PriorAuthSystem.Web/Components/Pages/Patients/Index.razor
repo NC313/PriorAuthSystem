@@ -1,0 +1,127 @@
+@page "/patients"
+@using PriorAuthSystem.Application.PriorAuthorizations.DTOs
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Patient Search</PageTitle>
+
+<h3>Patient Search</h3>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="input-group">
+            <input type="text" class="form-control" placeholder="Search by name or member ID..."
+                   @bind="_searchTerm" @bind:event="oninput" @onkeydown="HandleKeyDown" />
+            <button class="btn btn-primary" @onclick="Search" disabled="@_searching">
+                @if (_searching)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                }
+                Search
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="alert alert-warning">@_errorMessage</div>
+}
+
+@if (_searched && _patient is null && string.IsNullOrEmpty(_errorMessage))
+{
+    <p class="text-muted">No patient found matching "@_lastSearchTerm".</p>
+}
+
+@if (_patient is not null)
+{
+    <div class="card">
+        <div class="card-header">
+            <strong>@_patient.FirstName @_patient.LastName</strong>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <dl>
+                        <dt>Member ID</dt>
+                        <dd>@_patient.MemberId</dd>
+
+                        <dt>Date of Birth</dt>
+                        <dd>@_patient.DateOfBirth.ToString("yyyy-MM-dd")</dd>
+
+                        <dt>Insurance Plan ID</dt>
+                        <dd>@_patient.InsurancePlanId</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    <dl>
+                        <dt>Phone</dt>
+                        <dd>@_patient.Phone</dd>
+
+                        <dt>Email</dt>
+                        <dd>@_patient.Email</dd>
+
+                        <dt>Fax</dt>
+                        <dd>@_patient.FaxNumber</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <a href="/prior-auths/submit" class="btn btn-primary btn-sm">Submit Prior Auth for Patient</a>
+        </div>
+    </div>
+}
+
+@code {
+    private string _searchTerm = "";
+    private string _lastSearchTerm = "";
+    private PatientDto? _patient;
+    private bool _searching;
+    private bool _searched;
+    private string? _errorMessage;
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await Search();
+        }
+    }
+
+    private async Task Search()
+    {
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+            return;
+
+        _searching = true;
+        _errorMessage = null;
+        _patient = null;
+        _lastSearchTerm = _searchTerm.Trim();
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient("PriorAuthApi");
+
+            if (Guid.TryParse(_lastSearchTerm, out _))
+            {
+                _patient = await client.GetFromJsonAsync<PatientDto>($"api/patients/{_lastSearchTerm}");
+            }
+            else
+            {
+                _patient = await client.GetFromJsonAsync<PatientDto>($"api/patients/member/{Uri.EscapeDataString(_lastSearchTerm)}");
+            }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            _patient = null;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Search failed: {ex.Message}";
+        }
+        finally
+        {
+            _searching = false;
+            _searched = true;
+        }
+    }
+}
