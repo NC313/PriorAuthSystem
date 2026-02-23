@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="PriorAuthSystem.Mobile.Views.DashboardPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:PriorAuthSystem.Mobile.ViewModels"
+    xmlns:models="clr-namespace:PriorAuthSystem.Mobile.Models"
+    x:DataType="vm:DashboardViewModel"
+    Title="Pending Authorizations">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Error Banner -->
+        <Label
+            Grid.Row="0"
+            Text="{Binding ErrorMessage}"
+            TextColor="White"
+            BackgroundColor="Red"
+            Padding="12"
+            IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}" />
+
+        <RefreshView
+            Grid.Row="1"
+            Command="{Binding LoadPendingCommand}"
+            IsRefreshing="{Binding IsRefreshing}">
+
+            <CollectionView
+                ItemsSource="{Binding PendingAuths}"
+                SelectionMode="None">
+
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout
+                        VerticalOptions="Center"
+                        HorizontalOptions="Center"
+                        Spacing="8">
+                        <Label
+                            Text="No pending authorizations"
+                            FontSize="18"
+                            HorizontalTextAlignment="Center"
+                            TextColor="Gray" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:PriorAuthSummaryDto">
+                        <Frame
+                            Margin="12,6"
+                            Padding="14"
+                            CornerRadius="8"
+                            HasShadow="True"
+                            BorderColor="LightGray">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DashboardViewModel}}, Path=GoToDetailCommand}"
+                                    CommandParameter="{Binding Id}" />
+                            </Frame.GestureRecognizers>
+
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                <Label
+                                    Grid.Row="0" Grid.Column="0"
+                                    Text="{Binding PatientName}"
+                                    FontSize="16"
+                                    FontAttributes="Bold" />
+
+                                <Frame
+                                    Grid.Row="0" Grid.Column="1"
+                                    BackgroundColor="#FFA500"
+                                    CornerRadius="10"
+                                    Padding="8,4"
+                                    HasShadow="False">
+                                    <Label
+                                        Text="{Binding Status}"
+                                        FontSize="12"
+                                        TextColor="White" />
+                                </Frame>
+
+                                <Label
+                                    Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                    Text="{Binding InsuranceProvider}"
+                                    FontSize="14"
+                                    TextColor="Gray" />
+
+                                <Label
+                                    Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                    Text="{Binding RequestDate, StringFormat='{0:MMM dd, yyyy}'}"
+                                    FontSize="12"
+                                    TextColor="DarkGray" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+
+</ContentPage>

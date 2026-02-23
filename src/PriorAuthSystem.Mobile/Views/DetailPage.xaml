@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="PriorAuthSystem.Mobile.Views.DetailPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:PriorAuthSystem.Mobile.ViewModels"
+    x:DataType="vm:DetailViewModel"
+    Title="Authorization Details">
+
+    <Grid>
+
+        <!-- Loading Indicator -->
+        <ActivityIndicator
+            IsRunning="{Binding IsBusy}"
+            IsVisible="{Binding IsBusy}"
+            VerticalOptions="Center"
+            HorizontalOptions="Center" />
+
+        <!-- Error Banner -->
+        <Label
+            Text="{Binding ErrorMessage}"
+            TextColor="White"
+            BackgroundColor="Red"
+            Padding="12"
+            VerticalOptions="Start"
+            IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}" />
+
+        <!-- Detail Content -->
+        <ScrollView IsVisible="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}">
+            <VerticalStackLayout Padding="16" Spacing="16">
+
+                <!-- Patient Info -->
+                <Frame Padding="14" CornerRadius="8" HasShadow="True" BorderColor="LightGray">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Patient Information" FontSize="18" FontAttributes="Bold" />
+                        <BoxView HeightRequest="1" Color="LightGray" />
+                        <Label Text="{Binding Auth.PatientName, StringFormat='Name: {0}'}" FontSize="14" />
+                        <Label Text="{Binding Auth.PatientDateOfBirth, StringFormat='DOB: {0}'}" FontSize="14" />
+                        <Label Text="{Binding Auth.InsuranceProvider, StringFormat='Insurance: {0}'}" FontSize="14" />
+                        <Label Text="{Binding Auth.InsuranceMemberId, StringFormat='Member ID: {0}'}" FontSize="14" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Diagnosis -->
+                <Frame Padding="14" CornerRadius="8" HasShadow="True" BorderColor="LightGray">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Diagnosis" FontSize="18" FontAttributes="Bold" />
+                        <BoxView HeightRequest="1" Color="LightGray" />
+                        <Label Text="{Binding Auth.DiagnosisCode, StringFormat='Code: {0}'}" FontSize="14" />
+                        <Label Text="{Binding Auth.DiagnosisDescription, StringFormat='Description: {0}'}" FontSize="14" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Procedure -->
+                <Frame Padding="14" CornerRadius="8" HasShadow="True" BorderColor="LightGray">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Procedure" FontSize="18" FontAttributes="Bold" />
+                        <BoxView HeightRequest="1" Color="LightGray" />
+                        <Label Text="{Binding Auth.ProcedureCode, StringFormat='Code: {0}'}" FontSize="14" />
+                        <Label Text="{Binding Auth.ProcedureDescription, StringFormat='Description: {0}'}" FontSize="14" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Status -->
+                <Frame Padding="14" CornerRadius="8" HasShadow="True" BorderColor="LightGray">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Status" FontSize="18" FontAttributes="Bold" />
+                        <BoxView HeightRequest="1" Color="LightGray" />
+                        <Label Text="{Binding Auth.Status, StringFormat='Status: {0}'}" FontSize="14" />
+                        <Label Text="{Binding Auth.RequestDate, StringFormat='Requested: {0:MMM dd, yyyy}'}" FontSize="14" />
+                        <Label Text="{Binding Auth.DecisionDate, StringFormat='Decision: {0:MMM dd, yyyy}'}" FontSize="14" />
+                        <Label Text="{Binding Auth.Notes, StringFormat='Notes: {0}'}" FontSize="14" />
+                    </VerticalStackLayout>
+                </Frame>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+
+</ContentPage>
