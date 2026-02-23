@@ -3,7 +3,9 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using PriorAuthSystem.API.Hubs;
 using PriorAuthSystem.API.Middleware;
+using PriorAuthSystem.API.Services;
 using PriorAuthSystem.Application.Common.Behaviors;
+using PriorAuthSystem.Application.Common.Interfaces;
 using PriorAuthSystem.Domain.Interfaces;
 using PriorAuthSystem.Infrastructure.Persistence;
 using PriorAuthSystem.Infrastructure.Repositories;
@@ -49,6 +51,7 @@ try
 
     // SignalR
     builder.Services.AddSignalR();
+    builder.Services.AddScoped<IPriorAuthNotificationService, PriorAuthNotificationService>();
 
     var app = builder.Build();
 
@@ -71,7 +74,7 @@ try
     app.UseHttpsRedirection();
 
     app.MapControllers();
-    app.MapHub<PriorAuthHub>("/hubs/prior-auth");
+    app.MapHub<PriorAuthHub>("/hubs/priorauth");
 
     app.Run();
 }
