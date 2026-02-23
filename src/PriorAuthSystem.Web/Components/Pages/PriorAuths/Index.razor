@@ -1,0 +1,126 @@
+@page "/prior-auths"
+@using Microsoft.AspNetCore.SignalR.Client
+@using PriorAuthSystem.Web.Models
+@implements IAsyncDisposable
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Prior Authorizations</PageTitle>
+
+<h3>Pending Prior Authorizations</h3>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="badge bg-info">@_auths.Count item(s)</span>
+    <a href="/prior-auths/submit" class="btn btn-primary btn-sm">+ New Request</a>
+</div>
+
+@if (_loading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!_auths.Any())
+{
+    <p>No pending prior authorizations found.</p>
+}
+else
+{
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Patient Name</th>
+                <th>Status</th>
+                <th>Submitted Date</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var auth in _auths)
+            {
+                <tr>
+                    <td>@auth.PatientName</td>
+                    <td>
+                        <span class="badge @GetStatusBadgeClass(auth.Status)">@auth.Status</span>
+                    </td>
+                    <td>@auth.SubmittedDate.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>
+                        <a href="/prior-auths/@auth.Id" class="btn btn-outline-secondary btn-sm">View</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (_hubConnection is not null)
+{
+    <div class="mt-2">
+        <small class="text-muted">
+            SignalR: <span class="badge @(_hubConnection.State == HubConnectionState.Connected ? "bg-success" : "bg-warning")">@_hubConnection.State</span>
+        </small>
+    </div>
+}
+
+@code {
+    private List<PriorAuthorizationResponse> _auths = [];
+    private HubConnection? _hubConnection;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAuths();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(new Uri("http://localhost:5000/hubs/priorauth"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<string>("StatusUpdated", async _ =>
+        {
+            await LoadAuths();
+            await InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<string>("NewSubmission", async _ =>
+        {
+            await LoadAuths();
+            await InvokeAsync(StateHasChanged);
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task LoadAuths()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("PriorAuthApi");
+            var result = await client.GetFromJsonAsync<List<PriorAuthorizationResponse>>("api/prior-authorizations/pending");
+            _auths = result ?? [];
+        }
+        catch
+        {
+            _auths = [];
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string GetStatusBadgeClass(string status) => status switch
+    {
+        "Pending" => "bg-warning text-dark",
+        "Approved" => "bg-success",
+        "Denied" => "bg-danger",
+        "InReview" => "bg-info",
+        _ => "bg-secondary"
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

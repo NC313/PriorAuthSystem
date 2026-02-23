@@ -1,0 +1,183 @@
+@page "/prior-auths/submit"
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Submit Prior Authorization</PageTitle>
+
+<h3>Submit Prior Authorization</h3>
+
+<a href="/prior-auths" class="btn btn-outline-secondary btn-sm mb-3">&larr; Back to List</a>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="alert alert-danger">@_errorMessage</div>
+}
+
+@if (_submitted)
+{
+    <div class="alert alert-success">
+        Prior authorization submitted successfully.
+        <a href="/prior-auths/@_createdId">View Detail</a>
+    </div>
+}
+else
+{
+    <EditForm Model="_model" OnValidSubmit="HandleSubmit" FormName="SubmitPriorAuth">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" />
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Patient ID</label>
+                <InputText @bind-Value="_model.PatientId" class="form-control" placeholder="Enter Patient GUID" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Provider ID</label>
+                <InputText @bind-Value="_model.ProviderId" class="form-control" placeholder="Enter Provider GUID" />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Payer ID</label>
+                <InputText @bind-Value="_model.PayerId" class="form-control" placeholder="Enter Payer GUID" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Response Required By</label>
+                <InputDate @bind-Value="_model.RequiredResponseBy" class="form-control" />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <label class="form-label">ICD-10 Code</label>
+                <InputText @bind-Value="_model.IcdCode" class="form-control" placeholder="e.g. M17.11" />
+            </div>
+            <div class="col-md-9 mb-3">
+                <label class="form-label">ICD-10 Description</label>
+                <InputText @bind-Value="_model.IcdDescription" class="form-control" placeholder="e.g. Primary osteoarthritis, right knee" />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <label class="form-label">CPT Code</label>
+                <InputText @bind-Value="_model.CptCode" class="form-control" placeholder="e.g. 27447" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">CPT Description</label>
+                <InputText @bind-Value="_model.CptDescription" class="form-control" placeholder="e.g. Total knee replacement" />
+            </div>
+            <div class="col-md-3 mb-3 d-flex align-items-end">
+                <div class="form-check">
+                    <InputCheckbox @bind-Value="_model.CptRequiresPriorAuth" class="form-check-input" id="requiresPriorAuth" />
+                    <label class="form-check-label" for="requiresPriorAuth">Requires Prior Auth</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Clinical Notes</label>
+            <InputTextArea @bind-Value="_model.ClinicalNotes" class="form-control" rows="4"
+                           placeholder="Enter clinical justification and supporting notes..." />
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Documented By</label>
+                <InputText @bind-Value="_model.ClinicalDocumentedBy" class="form-control" placeholder="e.g. Dr. Smith" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Supporting Document Path</label>
+                <InputText @bind-Value="_model.ClinicalSupportingDocumentPath" class="form-control" placeholder="e.g. /docs/clinical-notes.pdf" />
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" disabled="@_submitting">
+            @if (_submitting)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            Submit Prior Authorization
+        </button>
+    </EditForm>
+}
+
+@code {
+    private SubmitModel _model = new();
+    private bool _submitting;
+    private bool _submitted;
+    private Guid? _createdId;
+    private string? _errorMessage;
+
+    private async Task HandleSubmit()
+    {
+        _submitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (!Guid.TryParse(_model.PatientId, out var patientId) ||
+                !Guid.TryParse(_model.ProviderId, out var providerId) ||
+                !Guid.TryParse(_model.PayerId, out var payerId))
+            {
+                _errorMessage = "Patient ID, Provider ID, and Payer ID must be valid GUIDs.";
+                return;
+            }
+
+            var command = new
+            {
+                PatientId = patientId,
+                ProviderId = providerId,
+                PayerId = payerId,
+                _model.IcdCode,
+                _model.IcdDescription,
+                _model.CptCode,
+                _model.CptDescription,
+                _model.CptRequiresPriorAuth,
+                ClinicalNotes = _model.ClinicalNotes ?? "",
+                ClinicalDocumentedBy = _model.ClinicalDocumentedBy ?? "",
+                ClinicalSupportingDocumentPath = _model.ClinicalSupportingDocumentPath ?? "",
+                _model.RequiredResponseBy
+            };
+
+            var client = HttpClientFactory.CreateClient("PriorAuthApi");
+            var response = await client.PostAsJsonAsync("api/prior-authorizations", command);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _createdId = await response.Content.ReadFromJsonAsync<Guid>();
+                _submitted = true;
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                _errorMessage = $"Submission failed ({response.StatusCode}): {body}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private sealed class SubmitModel
+    {
+        public string PatientId { get; set; } = "";
+        public string ProviderId { get; set; } = "";
+        public string PayerId { get; set; } = "";
+        public string IcdCode { get; set; } = "";
+        public string IcdDescription { get; set; } = "";
+        public string CptCode { get; set; } = "";
+        public string CptDescription { get; set; } = "";
+        public bool CptRequiresPriorAuth { get; set; } = true;
+        public string ClinicalNotes { get; set; } = "";
+        public string ClinicalDocumentedBy { get; set; } = "";
+        public string ClinicalSupportingDocumentPath { get; set; } = "";
+        public DateTime RequiredResponseBy { get; set; } = DateTime.UtcNow.AddDays(14);
+    }
+}
