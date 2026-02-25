@@ -12,6 +12,7 @@ using PriorAuthSystem.Infrastructure.Repositories;
 using PriorAuthSystem.Infrastructure.Services;
 using Serilog;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateLogger();
@@ -22,9 +23,9 @@ try
 
     builder.Host.UseSerilog();
 
-    // EF Core - SQL Server LocalDB
+    // EF Core - PostgreSQL
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
     // Repositories & Unit of Work
     builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -32,6 +33,19 @@ try
     // Infrastructure services
     builder.Services.AddSingleton<FhirMappingService>();
     builder.Services.AddSingleton<AuditService>();
+    builder.Services.AddSingleton<DemoUserService>();
+
+    // CORS
+    builder.Services.AddCors(options =>
+    {
+        options.AddDefaultPolicy(policy =>
+        {
+            policy.WithOrigins("http://localhost:5173", "https://localhost:5173")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
+    });
 
     // MediatR + pipeline behaviors
     builder.Services.AddMediatR(cfg =>
@@ -71,10 +85,13 @@ try
         app.UseSwaggerUI();
     }
 
-    app.UseHttpsRedirection();
+    app.UseCors();
+    app.UseHttpsRedirection(); 
+    app.UseMiddleware<DemoAuthMiddleware>();
 
     app.MapControllers();
     app.MapHub<PriorAuthHub>("/hubs/priorauth");
+    app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
     app.Run();
 }

@@ -14,6 +14,11 @@ public class PayerRepository : IPayerRepository
         _context = context;
     }
 
+    public async Task<IReadOnlyList<Payer>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Payers.ToListAsync(cancellationToken);
+    }
+
     public async Task<Payer?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.Payers.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);

@@ -9,12 +9,15 @@ using PriorAuthSystem.Application.PriorAuthorizations.DTOs;
 using PriorAuthSystem.Application.PriorAuthorizations.Queries.GetPendingPriorAuths;
 using PriorAuthSystem.Application.PriorAuthorizations.Queries.GetPriorAuthById;
 using PriorAuthSystem.Application.PriorAuthorizations.Queries.GetPriorAuthsByPatient;
+using PriorAuthSystem.Domain.Enums;
+using PriorAuthSystem.Domain.Interfaces;
+using PriorAuthSystem.Infrastructure.Services;
 
 namespace PriorAuthSystem.API.Controllers;
 
 [ApiController]
 [Route("api/prior-authorizations")]
-public class PriorAuthorizationsController(ISender mediator) : ControllerBase
+public class PriorAuthorizationsController(ISender mediator, IUnitOfWork unitOfWork, AuditService auditService) : ControllerBase
 {
     [HttpPost]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
@@ -102,6 +105,66 @@ public class PriorAuthorizationsController(ISender mediator) : ControllerBase
     {
         await mediator.Send(new AppealPriorAuthCommand(id, request.AppealedBy, request.ClinicalJustification), cancellationToken);
         return NoContent();
+    }
+
+    [HttpGet("all")]
+    [ProducesResponseType(typeof(IList<PriorAuthSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+    {
+        var all = await unitOfWork.PriorAuthorizationRequests.GetAllAsync(cancellationToken);
+        var summaries = all.Select(pa => new PriorAuthSummaryDto(
+            pa.Id, pa.Patient.FullName, pa.Provider.FullName, pa.Payer.PayerName,
+            pa.CptCode.Code, pa.IcdCode.Code, pa.Status.ToString(),
+            pa.CreatedAt, pa.RequiredResponseBy)).ToList();
+        return Ok(summaries);
+    }
+
+    [HttpGet("stats")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetStats(CancellationToken cancellationToken)
+    {
+        var all = await unitOfWork.PriorAuthorizationRequests.GetAllAsync(cancellationToken);
+
+        var pending = all.Count(a => a.Status is PriorAuthStatus.Submitted or PriorAuthStatus.UnderReview);
+        var approved = all.Count(a => a.Status is PriorAuthStatus.Approved or PriorAuthStatus.AppealApproved);
+        var denied = all.Count(a => a.Status is PriorAuthStatus.Denied or PriorAuthStatus.AppealDenied);
+        var underReview = all.Count(a => a.Status == PriorAuthStatus.UnderReview);
+
+        var completedAuths = all.Where(a => a.Status is PriorAuthStatus.Approved or PriorAuthStatus.Denied
+            or PriorAuthStatus.AppealApproved or PriorAuthStatus.AppealDenied).ToList();
+        var avgResponseDays = completedAuths.Count > 0
+            ? completedAuths.Average(a => (a.UpdatedAt ?? a.CreatedAt).Subtract(a.CreatedAt).TotalDays)
+            : 0.0;
+
+        var denialReasonBreakdown = all
+            .SelectMany(a => a.StatusTransitions)
+            .Where(t => t.ToStatus == PriorAuthStatus.Denied && !string.IsNullOrEmpty(t.Notes))
+            .GroupBy(t =>
+            {
+                var notes = t.Notes;
+                if (notes.StartsWith('[') && notes.Contains(']'))
+                    return notes[1..notes.IndexOf(']')];
+                return "Other";
+            })
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        return Ok(new
+        {
+            pending,
+            approved,
+            denied,
+            underReview,
+            avgResponseDays = Math.Round(avgResponseDays, 1),
+            denialReasonBreakdown
+        });
+    }
+
+    [HttpGet("audit-log")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult GetAuditLog()
+    {
+        var entries = auditService.GetRecentEntries(50);
+        return Ok(entries);
     }
 }
 

@@ -4,6 +4,7 @@ namespace PriorAuthSystem.Domain.Interfaces;
 
 public interface IPriorAuthorizationRepository
 {
+    Task<IReadOnlyList<PriorAuthorizationRequest>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<PriorAuthorizationRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PriorAuthorizationRequest>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PriorAuthorizationRequest>> GetPendingAsync(CancellationToken cancellationToken = default);

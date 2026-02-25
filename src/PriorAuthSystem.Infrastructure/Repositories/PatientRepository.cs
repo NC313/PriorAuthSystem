@@ -14,6 +14,11 @@ public class PatientRepository : IPatientRepository
         _context = context;
     }
 
+    public async Task<IReadOnlyList<Patient>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Patients.ToListAsync(cancellationToken);
+    }
+
     public async Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.Patients.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);

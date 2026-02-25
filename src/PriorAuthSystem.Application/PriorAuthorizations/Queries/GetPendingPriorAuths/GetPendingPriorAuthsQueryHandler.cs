@@ -25,7 +25,11 @@ public sealed class GetPendingPriorAuthsQueryHandler : IRequestHandler<GetPendin
         new(
             pa.Id,
             pa.Patient.FullName,
-            pa.Status.ToString(),
+            pa.Provider.FullName,
+            pa.Payer.PayerName,
             pa.CptCode.Code,
-            pa.CreatedAt);
+            pa.IcdCode.Code,
+            pa.Status.ToString(),
+            pa.CreatedAt,
+            pa.RequiredResponseBy);
 }
