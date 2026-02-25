@@ -22,6 +22,16 @@ public class PriorAuthorizationRepository : IPriorAuthorizationRepository
         _context = context;
     }
 
+    public async Task<IReadOnlyList<PriorAuthorizationRequest>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.PriorAuthorizationRequests
+            .Include(pa => pa.Patient)
+            .Include(pa => pa.Provider)
+            .Include(pa => pa.Payer)
+            .Include(pa => pa.StatusTransitions)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<PriorAuthorizationRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.PriorAuthorizationRequests

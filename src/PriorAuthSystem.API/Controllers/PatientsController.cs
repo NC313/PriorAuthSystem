@@ -9,6 +9,14 @@ namespace PriorAuthSystem.API.Controllers;
 [Route("api/patients")]
 public class PatientsController(IUnitOfWork unitOfWork) : ControllerBase
 {
+    [HttpGet]
+    [ProducesResponseType(typeof(IList<PatientDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+    {
+        var patients = await unitOfWork.Patients.GetAllAsync(cancellationToken);
+        return Ok(patients.Select(MapToDto).ToList());
+    }
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(PatientDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

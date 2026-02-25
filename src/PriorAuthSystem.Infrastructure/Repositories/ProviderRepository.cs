@@ -14,6 +14,11 @@ public class ProviderRepository : IProviderRepository
         _context = context;
     }
 
+    public async Task<IReadOnlyList<Provider>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Providers.ToListAsync(cancellationToken);
+    }
+
     public async Task<Provider?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.Providers.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
