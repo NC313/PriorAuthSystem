@@ -1,5 +1,5 @@
 [build]
-builder = "dockerfile"
+builder = "nixpacks"
 
 [deploy]
-healthcheckPath = "/health"
+healthcheckPath = "dotnet /app/out/PriorAuthSystem.API.dll"
