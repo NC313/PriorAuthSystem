@@ -2,4 +2,4 @@
 builder = "nixpacks"
 
 [deploy]
-healthcheckPath = "dotnet /app/out/PriorAuthSystem.API.dll"
+healthcheckPath = "/health"
