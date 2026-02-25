@@ -80,11 +80,8 @@ try
     // Global exception handler
     app.UseMiddleware<GlobalExceptionHandler>();
 
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseSwagger();
-        app.UseSwaggerUI();
-    }
+    app.UseSwagger();
+    app.UseSwaggerUI();
 
     app.UseCors();
     app.UseHttpsRedirection(); 
