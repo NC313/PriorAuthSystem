@@ -38,8 +38,6 @@ public class PriorAuthorizationRequest : BaseEntity
         CptCode = cptCode ?? throw new ArgumentNullException(nameof(cptCode));
         ClinicalJustification = clinicalJustification ?? throw new ArgumentNullException(nameof(clinicalJustification));
 
-        if (requiredResponseBy <= DateTime.UtcNow)
-            throw new ArgumentException("Required response date must be in the future.", nameof(requiredResponseBy));
 
         RequiredResponseBy = requiredResponseBy;
         Status = PriorAuthStatus.Draft;

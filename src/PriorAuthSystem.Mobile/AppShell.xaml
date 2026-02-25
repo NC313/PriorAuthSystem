@@ -3,12 +3,12 @@
     x:Class="PriorAuthSystem.Mobile.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:PriorAuthSystem.Mobile"
-    Title="PriorAuthSystem.Mobile">
+    xmlns:views="clr-namespace:PriorAuthSystem.Mobile.Views"
+    Title="Prior Auth">
 
     <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+        Title="Dashboard"
+        ContentTemplate="{DataTemplate views:DashboardPage}"
+        Route="dashboard" />
 
 </Shell>

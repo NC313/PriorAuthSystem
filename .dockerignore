@@ -1,0 +1,5 @@
+**/bin
+**/obj
+**/.git
+frontend/node_modules
+frontend/dist

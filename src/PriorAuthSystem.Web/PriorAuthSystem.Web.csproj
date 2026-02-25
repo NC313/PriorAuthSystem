@@ -2,6 +2,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PriorAuthSystem.Application\PriorAuthSystem.Application.csproj" />
+    <ProjectReference Include="..\PriorAuthSystem.Infrastructure\PriorAuthSystem.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.3" />
   </ItemGroup>
 
   <PropertyGroup>
