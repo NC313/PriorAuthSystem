@@ -3,8 +3,9 @@ export type PriorAuthStatus =
   'AdditionalInfoRequested' | 'Appealed' | 'AppealApproved' | 'AppealDenied' | 'Expired';
 
 export type DenialReason =
-  'MedicallyUnnecessary' | 'NotCovered' | 'RequiresStepTherapy' |
-  'InsufficientDocumentation' | 'OutOfNetwork' | 'DuplicateRequest';
+  'NotMedicallyNecessary' | 'ServiceNotCovered' | 'RequiresAlternativeTreatment' |
+  'InsufficientDocumentation' | 'OutOfNetwork' | 'DuplicateRequest' |
+  'EligibilityIssue' | 'PriorAuthNotRequired' | 'Other';
 
 export interface PatientDto {
   id: string;

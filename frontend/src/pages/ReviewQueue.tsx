@@ -14,6 +14,17 @@ import type { PriorAuthSummaryDto, PriorAuthStatus, DenialReason } from '../type
 
 type ModalType = 'approve' | 'deny' | 'info' | null;
 
+const denialReasons: { value: DenialReason; label: string }[] = [
+  { value: 'NotMedicallyNecessary', label: 'Not Medically Necessary' },
+  { value: 'ServiceNotCovered', label: 'Service Not Covered' },
+  { value: 'RequiresAlternativeTreatment', label: 'Requires Alternative Treatment' },
+  { value: 'InsufficientDocumentation', label: 'Insufficient Documentation' },
+  { value: 'OutOfNetwork', label: 'Out of Network' },
+  { value: 'DuplicateRequest', label: 'Duplicate Request' },
+  { value: 'EligibilityIssue', label: 'Eligibility Issue' },
+  { value: 'Other', label: 'Other' },
+];
+
 export default function ReviewQueue() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -22,7 +33,7 @@ export default function ReviewQueue() {
   const [modal, setModal] = useState<ModalType>(null);
   const [selectedId, setSelectedId] = useState('');
   const [notes, setNotes] = useState('');
-  const [denialReason, setDenialReason] = useState<DenialReason>('MedicallyUnnecessary');
+  const [denialReason, setDenialReason] = useState<DenialReason>('NotMedicallyNecessary');
   const [loading, setLoading] = useState(false);
 
   const { data: pending, isLoading } = useQuery({ queryKey: ['pendingAuths'], queryFn: getPendingAuths });
@@ -67,6 +78,8 @@ export default function ReviewQueue() {
     return { label: 'Normal', color: 'var(--green)', bg: 'var(--green-light)' };
   };
 
+  const canReview = user?.role === 'Reviewer' || user?.role === 'Admin';
+
   const columns: Column<PriorAuthSummaryDto>[] = [
     { key: 'priority', header: 'Priority', width: '90px', render: (r) => {
       const p = getPriority(r);
@@ -78,16 +91,17 @@ export default function ReviewQueue() {
     { key: 'payerName', header: 'Payer' },
     { key: 'requiredResponseBy', header: 'Due', width: '110px', render: (r) => format(new Date(r.requiredResponseBy), 'MMM d, yyyy') },
     { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status as PriorAuthStatus} /> },
-    { key: 'actions', header: 'Actions', width: '280px', render: (r) => (
-      <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
-        <ActionButton variant="primary" onClick={() => openModal('approve', r.id)} style={{ padding: '4px 10px', fontSize: 11 }}>Approve</ActionButton>
-        <ActionButton variant="danger" onClick={() => openModal('deny', r.id)} style={{ padding: '4px 10px', fontSize: 11 }}>Deny</ActionButton>
-        <ActionButton variant="warning" onClick={() => openModal('info', r.id)} style={{ padding: '4px 10px', fontSize: 11 }}>Request Info</ActionButton>
-      </div>
-    )},
+    { key: 'actions', header: 'Actions', width: '280px', render: (r) => {
+      if (!canReview) return null;
+      return (
+        <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
+          <ActionButton variant="primary" onClick={() => openModal('approve', r.id)} style={{ padding: '4px 10px', fontSize: 11 }}>Approve</ActionButton>
+          <ActionButton variant="danger" onClick={() => openModal('deny', r.id)} style={{ padding: '4px 10px', fontSize: 11 }}>Deny</ActionButton>
+          <ActionButton variant="warning" onClick={() => openModal('info', r.id)} style={{ padding: '4px 10px', fontSize: 11 }}>Request Info</ActionButton>
+        </div>
+      );
+    }},
   ];
-
-  const denialReasons: DenialReason[] = ['MedicallyUnnecessary', 'NotCovered', 'RequiresStepTherapy', 'InsufficientDocumentation', 'OutOfNetwork', 'DuplicateRequest'];
 
   return (
     <div>
@@ -129,7 +143,7 @@ export default function ReviewQueue() {
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-600)' }}>Denial Reason</label>
             <select value={denialReason} onChange={e => setDenialReason(e.target.value as DenialReason)} style={{ width: '100%', padding: 8, borderRadius: 'var(--radius)', border: '1px solid var(--gray-200)', marginTop: 4 }}>
-              {denialReasons.map(r => <option key={r} value={r}>{r}</option>)}
+              {denialReasons.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
           <div>

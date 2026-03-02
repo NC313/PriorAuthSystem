@@ -19,7 +19,7 @@ export default function Detail() {
   const { showToast } = useToast();
   const [modal, setModal] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
-  const [denialReason, setDenialReason] = useState<DenialReason>('MedicallyUnnecessary');
+  const [denialReason, setDenialReason] = useState<DenialReason>('NotMedicallyNecessary');
   const [justification, setJustification] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -68,7 +68,16 @@ export default function Detail() {
   const canResubmit = status === 'AdditionalInfoRequested' && role === 'Provider';
   const noActions = !canReview && !canAppeal && !canResubmit;
 
-  const denialReasons: DenialReason[] = ['MedicallyUnnecessary', 'NotCovered', 'RequiresStepTherapy', 'InsufficientDocumentation', 'OutOfNetwork', 'DuplicateRequest'];
+  const denialReasons: { value: DenialReason; label: string }[] = [
+    { value: 'NotMedicallyNecessary', label: 'Not Medically Necessary' },
+    { value: 'ServiceNotCovered', label: 'Service Not Covered' },
+    { value: 'RequiresAlternativeTreatment', label: 'Requires Alternative Treatment' },
+    { value: 'InsufficientDocumentation', label: 'Insufficient Documentation' },
+    { value: 'OutOfNetwork', label: 'Out of Network' },
+    { value: 'DuplicateRequest', label: 'Duplicate Request' },
+    { value: 'EligibilityIssue', label: 'Eligibility Issue' },
+    { value: 'Other', label: 'Other' },
+  ];
 
   return (
     <div style={{ paddingBottom: noActions ? 0 : 80 }}>
@@ -215,7 +224,7 @@ export default function Detail() {
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-600)' }}>Denial Reason</label>
             <select value={denialReason} onChange={e => setDenialReason(e.target.value as DenialReason)} style={{ width: '100%', padding: 8, borderRadius: 'var(--radius)', border: '1px solid var(--gray-200)', marginTop: 4 }}>
-              {denialReasons.map(r => <option key={r} value={r}>{r}</option>)}
+              {denialReasons.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
           <div>
