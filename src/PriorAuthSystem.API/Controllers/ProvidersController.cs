@@ -1,8 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using PriorAuthSystem.Application.PriorAuthorizations.DTOs;
+using PriorAuthSystem.Domain.Entities;
 using PriorAuthSystem.Domain.Interfaces;
+using PriorAuthSystem.Domain.ValueObjects;
 
 namespace PriorAuthSystem.API.Controllers;
+
+public sealed record CreateProviderRequest(
+    string FirstName, string LastName, string Npi, string Specialty,
+    string OrganizationName, string Phone, string Email, string FaxNumber);
 
 [ApiController]
 [Route("api/providers")]
@@ -31,5 +37,20 @@ public class ProvidersController(IUnitOfWork unitOfWork) : ControllerBase
             provider.Id, provider.FirstName, provider.LastName, provider.NPI,
             provider.Specialty, provider.OrganizationName,
             provider.ContactInfo.Phone, provider.ContactInfo.Email, provider.ContactInfo.FaxNumber));
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(ProviderDto), StatusCodes.Status201Created)]
+    public async Task<IActionResult> Create([FromBody] CreateProviderRequest req, CancellationToken ct)
+    {
+        var contact = new ContactInfo(req.Phone, req.Email, req.FaxNumber ?? "");
+        var provider = new Provider(req.FirstName, req.LastName, req.Npi,
+            req.Specialty, req.OrganizationName ?? "", contact);
+        await unitOfWork.Providers.AddAsync(provider, ct);
+        await unitOfWork.SaveChangesAsync(ct);
+        var dto = new ProviderDto(provider.Id, provider.FirstName, provider.LastName,
+            provider.NPI, provider.Specialty, provider.OrganizationName,
+            provider.ContactInfo.Phone, provider.ContactInfo.Email, provider.ContactInfo.FaxNumber);
+        return CreatedAtAction(nameof(GetById), new { id = provider.Id }, dto);
     }
 }

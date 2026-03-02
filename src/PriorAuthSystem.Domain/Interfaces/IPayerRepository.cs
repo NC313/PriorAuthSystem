@@ -8,4 +8,6 @@ public interface IPayerRepository
     Task<Payer?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Payer?> GetByPayerIdAsync(string payerId, CancellationToken cancellationToken = default);
     Task AddAsync(Payer payer, CancellationToken cancellationToken = default);
+    Task UpdateAsync(Payer payer, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Payer payer, CancellationToken cancellationToken = default);
 }

@@ -33,4 +33,16 @@ public class PayerRepository : IPayerRepository
     {
         await _context.Payers.AddAsync(payer, cancellationToken);
     }
+
+    public Task UpdateAsync(Payer payer, CancellationToken cancellationToken = default)
+    {
+        _context.Payers.Update(payer);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(Payer payer, CancellationToken cancellationToken = default)
+    {
+        _context.Payers.Remove(payer);
+        return Task.CompletedTask;
+    }
 }

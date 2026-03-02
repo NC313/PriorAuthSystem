@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { getPriorAuthById, approvePriorAuth, denyPriorAuth, requestAdditionalInfo, appealPriorAuth } from '../api/priorAuth';
+import { getPriorAuthById, approvePriorAuth, denyPriorAuth, requestAdditionalInfo, appealPriorAuth, submitPriorAuth } from '../api/priorAuth';
 import { useDemoUser } from '../hooks/useDemoUser';
 import { useToast } from '../components/Toast';
 import StatusBadge from '../components/StatusBadge';
@@ -45,6 +45,26 @@ export default function Detail() {
       } else if (modal === 'appeal') {
         await appealPriorAuth(id, user?.userId ?? '', justification);
         showToast('Appeal submitted', 'success');
+      } else if (modal === 'resubmit') {
+        if (!auth) return;
+        const newId = await submitPriorAuth({
+          patientId: auth.patient.id,
+          providerId: auth.provider.id,
+          payerId: auth.payer.id,
+          icdCode: auth.icdCode,
+          icdDescription: auth.icdDescription,
+          cptCode: auth.cptCode,
+          cptDescription: auth.cptDescription,
+          cptRequiresPriorAuth: true,
+          clinicalNotes: justification,
+          clinicalDocumentedBy: user?.name ?? 'Unknown',
+          clinicalSupportingDocumentPath: '',
+          requiredResponseBy: new Date(auth.requiredResponseBy).toISOString(),
+        });
+        showToast('Authorization resubmitted successfully', 'success');
+        setModal(null);
+        navigate(`/app/auth/${newId}`);
+        return;
       }
       queryClient.invalidateQueries({ queryKey: ['priorAuth', id] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
@@ -184,7 +204,7 @@ export default function Detail() {
             <ActionButton variant="secondary" onClick={() => setModal('appeal')} style={{ background: 'var(--purple)', borderColor: 'var(--purple)' }}>Submit Appeal</ActionButton>
           )}
           {canResubmit && (
-            <ActionButton variant="secondary" onClick={() => setModal('resubmit')} style={{ background: 'var(--blue)', borderColor: 'var(--blue)' }}>Resubmit</ActionButton>
+            <ActionButton variant="secondary" onClick={() => { setJustification(auth.clinicalJustification ?? ''); setModal('resubmit'); }} style={{ background: 'var(--blue)', borderColor: 'var(--blue)' }}>Resubmit with Additional Info</ActionButton>
           )}
         </div>
       )}
@@ -241,6 +261,19 @@ export default function Detail() {
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-600)' }}>Clinical Justification for Appeal</label>
             <textarea value={justification} onChange={e => setJustification(e.target.value)} rows={6} placeholder="Provide updated clinical reasoning..." style={{ width: '100%', padding: 8, borderRadius: 'var(--radius)', border: '1px solid var(--gray-200)', marginTop: 4, resize: 'vertical' }} />
+          </div>
+        </Modal>
+      )}
+      {modal === 'resubmit' && (
+        <Modal title="Resubmit with Additional Information" onClose={() => setModal(null)} footer={
+          <ActionButton variant="secondary" loading={loading} onClick={handleAction} style={{ background: 'var(--blue)', borderColor: 'var(--blue)' }}>Resubmit</ActionButton>
+        }>
+          <div style={{ marginBottom: 12, padding: 12, background: 'var(--amber-light)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--amber)' }}>
+            The reviewer has requested additional information. Update your clinical justification before resubmitting — this will create a new authorization request.
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-600)' }}>Updated Clinical Justification</label>
+            <textarea value={justification} onChange={e => setJustification(e.target.value)} rows={6} style={{ width: '100%', padding: 8, borderRadius: 'var(--radius)', border: '1px solid var(--gray-200)', marginTop: 4, resize: 'vertical' }} />
           </div>
         </Modal>
       )}

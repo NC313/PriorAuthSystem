@@ -33,4 +33,16 @@ public class ProviderRepository : IProviderRepository
     {
         await _context.Providers.AddAsync(provider, cancellationToken);
     }
+
+    public Task UpdateAsync(Provider provider, CancellationToken cancellationToken = default)
+    {
+        _context.Providers.Update(provider);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(Provider provider, CancellationToken cancellationToken = default)
+    {
+        _context.Providers.Remove(provider);
+        return Task.CompletedTask;
+    }
 }

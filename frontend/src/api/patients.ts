@@ -30,3 +30,12 @@ export const getPatientByMemberId = async (memberId: string): Promise<PatientDto
     fullName: `${data.firstName} ${data.lastName}`,
   };
 };
+
+export const createPatient = async (payload: {
+  firstName: string; lastName: string; dateOfBirth: string;
+  memberId: string; insurancePlanId: string;
+  phone: string; email: string; faxNumber?: string;
+}): Promise<PatientDto> => {
+  const { data } = await client.post('/api/patients', payload);
+  return { ...data, fullName: `${data.firstName} ${data.lastName}` };
+};

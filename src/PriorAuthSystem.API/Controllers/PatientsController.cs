@@ -1,9 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
 using PriorAuthSystem.Application.PriorAuthorizations.DTOs;
+using PriorAuthSystem.Domain.Entities;
 using PriorAuthSystem.Domain.Exceptions;
 using PriorAuthSystem.Domain.Interfaces;
+using PriorAuthSystem.Domain.ValueObjects;
 
 namespace PriorAuthSystem.API.Controllers;
+
+public sealed record CreatePatientRequest(
+    string FirstName, string LastName, string DateOfBirth,
+    string MemberId, string InsurancePlanId,
+    string Phone, string Email, string FaxNumber);
 
 [ApiController]
 [Route("api/patients")]
@@ -39,6 +46,18 @@ public class PatientsController(IUnitOfWork unitOfWork) : ControllerBase
             return NotFound(new { message = $"Patient with member ID '{memberId}' was not found." });
 
         return Ok(MapToDto(patient));
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(PatientDto), StatusCodes.Status201Created)]
+    public async Task<IActionResult> Create([FromBody] CreatePatientRequest req, CancellationToken ct)
+    {
+        var contact = new ContactInfo(req.Phone, req.Email, req.FaxNumber ?? "");
+        var patient = new Patient(req.FirstName, req.LastName,
+            DateTime.Parse(req.DateOfBirth), req.MemberId, req.InsurancePlanId ?? "", contact);
+        await unitOfWork.Patients.AddAsync(patient, ct);
+        await unitOfWork.SaveChangesAsync(ct);
+        return CreatedAtAction(nameof(GetById), new { id = patient.Id }, MapToDto(patient));
     }
 
     private static PatientDto MapToDto(Domain.Entities.Patient patient) =>

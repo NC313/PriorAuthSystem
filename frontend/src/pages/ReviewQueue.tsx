@@ -78,13 +78,16 @@ export default function ReviewQueue() {
     { key: 'payerName', header: 'Payer' },
     { key: 'requiredResponseBy', header: 'Due', width: '110px', render: (r) => format(new Date(r.requiredResponseBy), 'MMM d, yyyy') },
     { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status as PriorAuthStatus} /> },
-    { key: 'actions', header: 'Actions', width: '280px', render: (r) => (
-      <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
-        <ActionButton variant="primary" onClick={() => openModal('approve', r.id)} style={{ padding: '4px 10px', fontSize: 11 }}>Approve</ActionButton>
-        <ActionButton variant="danger" onClick={() => openModal('deny', r.id)} style={{ padding: '4px 10px', fontSize: 11 }}>Deny</ActionButton>
-        <ActionButton variant="warning" onClick={() => openModal('info', r.id)} style={{ padding: '4px 10px', fontSize: 11 }}>Request Info</ActionButton>
-      </div>
-    )},
+    { key: 'actions', header: 'Actions', width: '280px', render: (r) => {
+      if (user?.role !== 'Reviewer' && user?.role !== 'Admin') return null;
+      return (
+        <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
+          <ActionButton variant="primary" onClick={() => openModal('approve', r.id)} style={{ padding: '4px 10px', fontSize: 11 }}>Approve</ActionButton>
+          <ActionButton variant="danger" onClick={() => openModal('deny', r.id)} style={{ padding: '4px 10px', fontSize: 11 }}>Deny</ActionButton>
+          <ActionButton variant="warning" onClick={() => openModal('info', r.id)} style={{ padding: '4px 10px', fontSize: 11 }}>Request Info</ActionButton>
+        </div>
+      );
+    }},
   ];
 
   const denialReasons: DenialReason[] = ['MedicallyUnnecessary', 'NotCovered', 'RequiresStepTherapy', 'InsufficientDocumentation', 'OutOfNetwork', 'DuplicateRequest'];

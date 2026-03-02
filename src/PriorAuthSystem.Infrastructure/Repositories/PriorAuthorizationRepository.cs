@@ -72,4 +72,10 @@ public class PriorAuthorizationRepository : IPriorAuthorizationRepository
         _context.PriorAuthorizationRequests.Update(request);
         return Task.CompletedTask;
     }
+
+    public Task DeleteAsync(PriorAuthorizationRequest request, CancellationToken cancellationToken = default)
+    {
+        _context.PriorAuthorizationRequests.Remove(request);
+        return Task.CompletedTask;
+    }
 }

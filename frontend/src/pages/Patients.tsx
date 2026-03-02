@@ -1,18 +1,30 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { getAllPatients } from '../api/patients';
+import { getAllPatients, createPatient } from '../api/patients';
 import { getPriorAuthsByPatient } from '../api/priorAuth';
 import PageHeader from '../components/PageHeader';
 import StatusBadge from '../components/StatusBadge';
 import ActionButton from '../components/ActionButton';
+import Modal from '../components/Modal';
+import { useToast } from '../components/Toast';
+import { useDemoUser } from '../hooks/useDemoUser';
 import type { PatientDto, PriorAuthSummaryDto, PriorAuthStatus } from '../types';
 
 export default function Patients() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const { user } = useDemoUser();
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    firstName: '', lastName: '', dateOfBirth: '',
+    memberId: '', insurancePlanId: '', phone: '', email: '',
+  });
 
   const { data: patients, isLoading } = useQuery({ queryKey: ['patients'], queryFn: getAllPatients });
 
@@ -20,18 +32,59 @@ export default function Patients() {
     !search || p.fullName.toLowerCase().includes(search.toLowerCase()) || p.memberId.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleSubmit = async () => {
+    if (!form.firstName || !form.lastName || !form.dateOfBirth || !form.memberId || !form.phone) {
+      showToast('First name, last name, date of birth, member ID, and phone are required', 'error');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createPatient(form);
+      await queryClient.invalidateQueries({ queryKey: ['patients'] });
+      showToast(`Patient ${form.firstName} ${form.lastName} added`, 'success');
+      setShowAddModal(false);
+      setForm({ firstName: '', lastName: '', dateOfBirth: '', memberId: '', insurancePlanId: '', phone: '', email: '' });
+    } catch {
+      showToast('Failed to create patient', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const field = (label: string, key: keyof typeof form, type = 'text') => (
+    <div style={{ marginBottom: 14 }}>
+      <label style={{ display: 'block', fontSize: 12, color: 'var(--gray-500)', marginBottom: 4 }}>{label}</label>
+      <input
+        type={type}
+        value={form[key]}
+        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+        style={{
+          width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)',
+          border: '1px solid var(--gray-200)', fontSize: 14, boxSizing: 'border-box',
+        }}
+      />
+    </div>
+  );
+
   return (
     <div>
       <PageHeader
         title="Patient Management"
-        action={<span style={{ fontSize: 13, color: 'var(--gray-500)', background: 'var(--gray-100)', padding: '4px 12px', borderRadius: 999 }}>{filtered.length} patients</span>}
+        action={
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 13, color: 'var(--gray-500)', background: 'var(--gray-100)', padding: '4px 12px', borderRadius: 999 }}>{filtered.length} patients</span>
+            {user?.role === 'Admin' && (
+              <ActionButton variant="primary" onClick={() => setShowAddModal(true)}>+ Add Patient</ActionButton>
+            )}
+          </div>
+        }
       />
 
       <div style={{ marginBottom: 20 }}>
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="\ud83d\udd0d Search by name or member ID..."
+          placeholder="🔍 Search by name or member ID..."
           style={{
             width: '100%', padding: '10px 16px', borderRadius: 'var(--radius)',
             border: '1px solid var(--gray-200)', fontSize: 14, background: 'var(--white)',
@@ -47,6 +100,29 @@ export default function Patients() {
             <PatientCard key={p.id} patient={p} expanded={expandedId === p.id} onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)} navigate={navigate} />
           ))}
         </div>
+      )}
+
+      {showAddModal && (
+        <Modal
+          title="Add Patient"
+          onClose={() => setShowAddModal(false)}
+          footer={
+            <>
+              <ActionButton variant="ghost" onClick={() => setShowAddModal(false)}>Cancel</ActionButton>
+              <ActionButton variant="primary" onClick={handleSubmit} disabled={submitting}>
+                {submitting ? 'Saving...' : 'Save Patient'}
+              </ActionButton>
+            </>
+          }
+        >
+          {field('First Name *', 'firstName')}
+          {field('Last Name *', 'lastName')}
+          {field('Date of Birth *', 'dateOfBirth', 'date')}
+          {field('Member ID *', 'memberId')}
+          {field('Insurance Plan ID', 'insurancePlanId')}
+          {field('Phone *', 'phone', 'tel')}
+          {field('Email', 'email', 'email')}
+        </Modal>
       )}
     </div>
   );

@@ -14,3 +14,12 @@ export const getAllProviders = async (): Promise<ProviderDto[]> => {
     phone: p.phone,
   }));
 };
+
+export const createProvider = async (payload: {
+  firstName: string; lastName: string; npi: string;
+  specialty: string; organizationName?: string;
+  phone: string; email: string; faxNumber?: string;
+}): Promise<ProviderDto> => {
+  const { data } = await client.post('/api/providers', payload);
+  return { ...data, fullName: `Dr. ${data.firstName} ${data.lastName}`, npi: data.npi ?? data.nPI };
+};

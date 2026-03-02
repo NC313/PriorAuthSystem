@@ -10,4 +10,5 @@ public interface IPriorAuthorizationRepository
     Task<IReadOnlyList<PriorAuthorizationRequest>> GetPendingAsync(CancellationToken cancellationToken = default);
     Task AddAsync(PriorAuthorizationRequest request, CancellationToken cancellationToken = default);
     Task UpdateAsync(PriorAuthorizationRequest request, CancellationToken cancellationToken = default);
+    Task DeleteAsync(PriorAuthorizationRequest request, CancellationToken cancellationToken = default);
 }

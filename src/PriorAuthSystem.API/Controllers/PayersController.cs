@@ -1,8 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using PriorAuthSystem.Application.PriorAuthorizations.DTOs;
+using PriorAuthSystem.Domain.Entities;
 using PriorAuthSystem.Domain.Interfaces;
+using PriorAuthSystem.Domain.ValueObjects;
 
 namespace PriorAuthSystem.API.Controllers;
+
+public sealed record CreatePayerRequest(
+    string PayerName, string PayerId, int StandardResponseDays,
+    string Phone, string Email, string FaxNumber);
 
 [ApiController]
 [Route("api/payers")]
@@ -30,5 +36,19 @@ public class PayersController(IUnitOfWork unitOfWork) : ControllerBase
         return Ok(new PayerDto(
             payer.Id, payer.PayerName, payer.PayerId, payer.StandardResponseDays,
             payer.ContactInfo.Phone, payer.ContactInfo.Email, payer.ContactInfo.FaxNumber));
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(PayerDto), StatusCodes.Status201Created)]
+    public async Task<IActionResult> Create([FromBody] CreatePayerRequest req, CancellationToken ct)
+    {
+        var contact = new ContactInfo(req.Phone, req.Email, req.FaxNumber ?? "");
+        var payer = new Payer(req.PayerName, req.PayerId, req.StandardResponseDays, contact);
+        await unitOfWork.Payers.AddAsync(payer, ct);
+        await unitOfWork.SaveChangesAsync(ct);
+        var dto = new PayerDto(payer.Id, payer.PayerName, payer.PayerId,
+            payer.StandardResponseDays, payer.ContactInfo.Phone,
+            payer.ContactInfo.Email, payer.ContactInfo.FaxNumber);
+        return CreatedAtAction(nameof(GetById), new { id = payer.Id }, dto);
     }
 }
