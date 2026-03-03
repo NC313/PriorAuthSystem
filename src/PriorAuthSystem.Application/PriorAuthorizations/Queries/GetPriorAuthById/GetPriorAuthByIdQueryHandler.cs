@@ -26,9 +26,30 @@ public sealed class GetPriorAuthByIdQueryHandler : IRequestHandler<GetPriorAuthB
     private static PriorAuthDto MapToDto(PriorAuthorizationRequest pa) =>
         new(
             pa.Id,
-            pa.Patient.FullName,
-            pa.Provider.FullName,
-            pa.Payer.PayerName,
+            new PriorAuthPatientDto(
+                pa.Patient.Id,
+                pa.Patient.FirstName,
+                pa.Patient.LastName,
+                pa.Patient.FullName,
+                pa.Patient.DateOfBirth,
+                pa.Patient.MemberId,
+                pa.Patient.ContactInfo.Email,
+                pa.Patient.ContactInfo.Phone),
+            new PriorAuthProviderDto(
+                pa.Provider.Id,
+                pa.Provider.FirstName,
+                pa.Provider.LastName,
+                pa.Provider.FullName,
+                pa.Provider.NPI,
+                pa.Provider.Specialty,
+                pa.Provider.ContactInfo.Email),
+            new PriorAuthPayerDto(
+                pa.Payer.Id,
+                pa.Payer.PayerName,
+                pa.Payer.PayerId,
+                pa.Payer.StandardResponseDays,
+                pa.Payer.ContactInfo.Phone,
+                pa.Payer.ContactInfo.Email),
             pa.IcdCode.Code,
             pa.IcdCode.Description,
             pa.CptCode.Code,

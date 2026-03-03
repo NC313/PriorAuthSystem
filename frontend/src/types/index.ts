@@ -45,11 +45,41 @@ export interface StatusTransitionDto {
   transitionedAt: string;
 }
 
+export interface PriorAuthPatientDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  dateOfBirth: string;
+  memberId: string;
+  email: string;
+  phone: string;
+}
+
+export interface PriorAuthProviderDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  npi: string;
+  specialty: string;
+  email: string;
+}
+
+export interface PriorAuthPayerDto {
+  id: string;
+  name: string;
+  payerId: string;
+  standardResponseDays: number;
+  phone: string;
+  email: string;
+}
+
 export interface PriorAuthDto {
   id: string;
-  patient: PatientDto;
-  provider: ProviderDto;
-  payer: PayerDto;
+  patient: PriorAuthPatientDto;
+  provider: PriorAuthProviderDto;
+  payer: PriorAuthPayerDto;
   icdCode: string;
   icdDescription: string;
   cptCode: string;

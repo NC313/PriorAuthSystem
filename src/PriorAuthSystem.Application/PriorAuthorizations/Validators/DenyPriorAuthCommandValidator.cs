@@ -18,6 +18,6 @@ public class DenyPriorAuthCommandValidator : AbstractValidator<DenyPriorAuthComm
             .IsInEnum().WithMessage("A valid denial reason is required.");
 
         RuleFor(x => x.Notes)
-            .NotEmpty().WithMessage("Denial notes are required.");
+            .MaximumLength(2000).WithMessage("Notes cannot exceed 2000 characters.");
     }
 }

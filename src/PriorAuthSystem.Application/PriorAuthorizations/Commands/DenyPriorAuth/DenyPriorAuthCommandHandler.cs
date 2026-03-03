@@ -15,7 +15,6 @@ public sealed class DenyPriorAuthCommandHandler(
 
         priorAuth.Deny(request.ReviewerId, request.Reason, request.Notes);
 
-        await unitOfWork.PriorAuthorizationRequests.UpdateAsync(priorAuth, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         await notificationService.SendStatusUpdate(request.RequestId, priorAuth.Status.ToString());

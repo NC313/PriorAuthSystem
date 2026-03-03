@@ -15,7 +15,6 @@ public sealed class ApprovePriorAuthCommandHandler(
 
         priorAuth.Approve(request.ReviewerId, request.Notes);
 
-        await unitOfWork.PriorAuthorizationRequests.UpdateAsync(priorAuth, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         await notificationService.SendStatusUpdate(request.RequestId, priorAuth.Status.ToString());

@@ -15,7 +15,6 @@ public sealed class AppealPriorAuthCommandHandler(
 
         priorAuth.Appeal(request.AppealedBy, request.ClinicalJustification);
 
-        await unitOfWork.PriorAuthorizationRequests.UpdateAsync(priorAuth, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         await notificationService.SendStatusUpdate(request.RequestId, priorAuth.Status.ToString());

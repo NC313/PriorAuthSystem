@@ -19,7 +19,6 @@ public sealed class RequestAdditionalInfoCommandHandler : IRequestHandler<Reques
 
         priorAuth.RequestAdditionalInfo(request.RequestedBy, request.Notes);
 
-        await _unitOfWork.PriorAuthorizationRequests.UpdateAsync(priorAuth, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }
