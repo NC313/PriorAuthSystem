@@ -14,6 +14,18 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        // StatusTransitions are immutable — EF Core sometimes mis-tracks new ones as Modified.
+        // Any Modified StatusTransition is always a new entity that needs to be Inserted.
+        foreach (var entry in ChangeTracker.Entries<StatusTransition>().ToList())
+        {
+            if (entry.State == EntityState.Modified)
+                entry.State = EntityState.Added;
+        }
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
