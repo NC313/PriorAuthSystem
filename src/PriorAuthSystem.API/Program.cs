@@ -86,7 +86,6 @@ try
     app.UseSwaggerUI();
 
     app.UseCors();
-    app.UseHttpsRedirection(); 
     app.UseMiddleware<DemoAuthMiddleware>();
 
     app.MapControllers();
