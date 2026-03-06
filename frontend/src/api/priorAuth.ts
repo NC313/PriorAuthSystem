@@ -58,6 +58,10 @@ export const requestAdditionalInfo = async (id: string, requestedBy: string, not
   await client.put(`/api/prior-authorizations/${id}/additional-info`, { requestedBy, notes });
 };
 
+export const resubmitPriorAuth = async (id: string, resubmittedBy: string): Promise<void> => {
+  await client.put(`/api/prior-authorizations/${id}/resubmit`, { resubmittedBy });
+};
+
 export const appealPriorAuth = async (id: string, appealedBy: string, clinicalJustification: string): Promise<void> => {
   await client.put(`/api/prior-authorizations/${id}/appeal`, { appealedBy, clinicalJustification });
 };

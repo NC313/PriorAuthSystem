@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { getPriorAuthById, approvePriorAuth, denyPriorAuth, requestAdditionalInfo, appealPriorAuth } from '../api/priorAuth';
+import { getPriorAuthById, approvePriorAuth, denyPriorAuth, requestAdditionalInfo, appealPriorAuth, resubmitPriorAuth } from '../api/priorAuth';
 import { useDemoUser } from '../hooks/useDemoUser';
 import { useToast } from '../components/Toast';
 import StatusBadge from '../components/StatusBadge';
@@ -45,6 +45,9 @@ export default function Detail() {
       } else if (modal === 'appeal') {
         await appealPriorAuth(id, user?.userId ?? '', justification);
         showToast('Appeal submitted', 'success');
+      } else if (modal === 'resubmit') {
+        await resubmitPriorAuth(id, user?.userId ?? '');
+        showToast('Authorization resubmitted', 'success');
       }
       queryClient.invalidateQueries({ queryKey: ['priorAuth', id] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
@@ -240,6 +243,15 @@ export default function Detail() {
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-600)' }}>Details</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} placeholder="Describe what information is needed..." style={{ width: '100%', padding: 8, borderRadius: 'var(--radius)', border: '1px solid var(--gray-200)', marginTop: 4, resize: 'vertical' }} />
+          </div>
+        </Modal>
+      )}
+      {modal === 'resubmit' && (
+        <Modal title="Resubmit Authorization" onClose={() => setModal(null)} footer={
+          <ActionButton variant="secondary" loading={loading} onClick={handleAction} style={{ background: 'var(--blue)', borderColor: 'var(--blue)' }}>Confirm Resubmit</ActionButton>
+        }>
+          <div style={{ fontSize: 13, color: 'var(--gray-600)' }}>
+            This will resubmit the authorization for review. Are you sure?
           </div>
         </Modal>
       )}

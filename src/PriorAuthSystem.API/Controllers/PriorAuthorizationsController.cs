@@ -4,6 +4,7 @@ using PriorAuthSystem.Application.PriorAuthorizations.Commands.AppealPriorAuth;
 using PriorAuthSystem.Application.PriorAuthorizations.Commands.ApprovePriorAuth;
 using PriorAuthSystem.Application.PriorAuthorizations.Commands.DenyPriorAuth;
 using PriorAuthSystem.Application.PriorAuthorizations.Commands.RequestAdditionalInfo;
+using PriorAuthSystem.Application.PriorAuthorizations.Commands.ResubmitPriorAuth;
 using PriorAuthSystem.Application.PriorAuthorizations.Commands.SubmitPriorAuth;
 using PriorAuthSystem.Application.PriorAuthorizations.DTOs;
 using PriorAuthSystem.Application.PriorAuthorizations.Queries.GetPendingPriorAuths;
@@ -94,6 +95,19 @@ public class PriorAuthorizationsController(ISender mediator, IUnitOfWork unitOfW
         return NoContent();
     }
 
+    [HttpPut("{id:guid}/resubmit")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Resubmit(
+        Guid id,
+        [FromBody] ResubmitRequest request,
+        CancellationToken cancellationToken)
+    {
+        await mediator.Send(new ResubmitPriorAuthCommand(id, request.ResubmittedBy), cancellationToken);
+        return NoContent();
+    }
+
     [HttpPut("{id:guid}/appeal")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -169,6 +183,7 @@ public class PriorAuthorizationsController(ISender mediator, IUnitOfWork unitOfW
 }
 
 public sealed record ApproveRequest(string ReviewerId, string Notes);
+public sealed record ResubmitRequest(string ResubmittedBy);
 public sealed record DenyRequest(string ReviewerId, Domain.Enums.DenialReason Reason, string Notes);
 public sealed record AdditionalInfoRequest(string RequestedBy, string Notes);
 public sealed record AppealRequest(string AppealedBy, string ClinicalJustification);
