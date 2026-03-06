@@ -70,6 +70,9 @@ try
     builder.Services.AddSignalR();
     builder.Services.AddScoped<IPriorAuthNotificationService, PriorAuthNotificationService>();
 
+    // Background Services
+    builder.Services.AddHostedService<ExpirationBackgroundService>();
+
     var app = builder.Build();
 
     // Seed database
