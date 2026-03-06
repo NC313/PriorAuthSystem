@@ -25,6 +25,13 @@ const denialReasons: { value: DenialReason; label: string }[] = [
   { value: 'Other', label: 'Other' },
 ];
 
+function getPriority(r: PriorAuthSummaryDto) {
+  const due = new Date(r.requiredResponseBy);
+  if (isPast(due)) return { label: 'High', color: 'var(--red)', bg: 'var(--red-light)' };
+  if (differenceInHours(due, new Date()) <= 24) return { label: 'Medium', color: 'var(--amber)', bg: 'var(--amber-light)' };
+  return { label: 'Normal', color: 'var(--green)', bg: 'var(--green-light)' };
+}
+
 export default function ReviewQueue() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -36,11 +43,29 @@ export default function ReviewQueue() {
   const [denialReason, setDenialReason] = useState<DenialReason>('NotMedicallyNecessary');
   const [loading, setLoading] = useState(false);
 
+  const [search, setSearch] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState<'All' | 'High' | 'Medium' | 'Normal'>('All');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Submitted' | 'UnderReview'>('All');
+
   const { data: pending, isLoading } = useQuery({ queryKey: ['pendingAuths'], queryFn: getPendingAuths });
 
-  const reviewable = (pending ?? []).filter(a =>
-    a.status === 'Submitted' || a.status === 'UnderReview'
-  );
+  const reviewable = (pending ?? [])
+    .filter(a => a.status === 'Submitted' || a.status === 'UnderReview')
+    .filter(a => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (
+        a.patientName?.toLowerCase().includes(q) ||
+        a.payerName?.toLowerCase().includes(q) ||
+        a.cptCode?.toLowerCase().includes(q) ||
+        a.icdCode?.toLowerCase().includes(q)
+      );
+    })
+    .filter(a => statusFilter === 'All' || a.status === statusFilter)
+    .filter(a => {
+      if (priorityFilter === 'All') return true;
+      return getPriority(a).label === priorityFilter;
+    });
 
   const openModal = (type: ModalType, id: string) => {
     setModal(type);
@@ -69,13 +94,6 @@ export default function ReviewQueue() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getPriority = (r: PriorAuthSummaryDto) => {
-    const due = new Date(r.requiredResponseBy);
-    if (isPast(due)) return { label: 'High', color: 'var(--red)', bg: 'var(--red-light)' };
-    if (differenceInHours(due, new Date()) <= 24) return { label: 'Medium', color: 'var(--amber)', bg: 'var(--amber-light)' };
-    return { label: 'Normal', color: 'var(--green)', bg: 'var(--green-light)' };
   };
 
   const canReview = user?.role === 'Reviewer' || user?.role === 'Admin';
@@ -107,12 +125,56 @@ export default function ReviewQueue() {
     <div>
       <PageHeader title="Review Queue" subtitle="Authorizations requiring clinical review" />
 
+      {/* Search & Filter Bar */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          placeholder="Search patient, payer, CPT, ICD..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            flex: 1, minWidth: 220, padding: '8px 12px', borderRadius: 'var(--radius)',
+            border: '1px solid var(--gray-200)', fontSize: 13, outline: 'none',
+          }}
+        />
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
+          style={{ padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--gray-200)', fontSize: 13 }}
+        >
+          <option value="All">All Statuses</option>
+          <option value="Submitted">Submitted</option>
+          <option value="UnderReview">Under Review</option>
+        </select>
+        <select
+          value={priorityFilter}
+          onChange={e => setPriorityFilter(e.target.value as typeof priorityFilter)}
+          style={{ padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--gray-200)', fontSize: 13 }}
+        >
+          <option value="All">All Priorities</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Normal">Normal</option>
+        </select>
+        {(search || statusFilter !== 'All' || priorityFilter !== 'All') && (
+          <button
+            onClick={() => { setSearch(''); setStatusFilter('All'); setPriorityFilter('All'); }}
+            style={{ padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--gray-200)', fontSize: 13, cursor: 'pointer', background: 'var(--gray-50)', color: 'var(--gray-600)' }}
+          >
+            Clear
+          </button>
+        )}
+        <span style={{ display: 'flex', alignItems: 'center', fontSize: 12, color: 'var(--gray-400)' }}>
+          {reviewable.length} result{reviewable.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
       <DataTable
         columns={columns}
         data={reviewable}
         loading={isLoading}
         onRowClick={(r) => navigate(`/app/auth/${r.id}`)}
-        emptyMessage="No authorizations pending review"
+        emptyMessage="No authorizations match your filters"
       />
 
       {/* Approve Modal */}
