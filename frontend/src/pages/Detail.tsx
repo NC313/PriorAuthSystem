@@ -84,9 +84,15 @@ export default function Detail() {
 
   return (
     <div style={{ paddingBottom: noActions ? 0 : 80 }}>
+      {/* Print-only header */}
+      <div className="print-only" style={{ display: 'none', marginBottom: 24, borderBottom: '2px solid #000', paddingBottom: 12 }}>
+        <div style={{ fontSize: 20, fontWeight: 700 }}>⚕ PriorAuth Manager — Authorization Record</div>
+        <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Printed: {format(new Date(), 'MMM d, yyyy h:mm a')}</div>
+      </div>
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-        <ActionButton variant="ghost" onClick={() => navigate(-1)}>{'\u2190'} Back</ActionButton>
+        <ActionButton variant="ghost" onClick={() => navigate(-1)} className="no-print">{'\u2190'} Back</ActionButton>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <h1 style={{ fontSize: 22, fontWeight: 700 }}>Prior Authorization</h1>
@@ -97,6 +103,9 @@ export default function Detail() {
         <span style={{ fontSize: 12, color: 'var(--gray-400)' }}>
           Updated {auth.statusTransitions?.length > 0 ? format(new Date(auth.statusTransitions[auth.statusTransitions.length - 1].transitionedAt), 'MMM d, yyyy h:mm a') : 'N/A'}
         </span>
+        <ActionButton variant="ghost" onClick={() => window.print()} className="no-print">
+          Export PDF
+        </ActionButton>
       </div>
 
       {/* Info Cards */}
@@ -179,7 +188,7 @@ export default function Detail() {
 
       {/* Action Panel */}
       {!noActions && (
-        <div style={{
+        <div className="no-print" style={{
           position: 'fixed', bottom: 0, left: 260, right: 0,
           background: 'var(--white)', borderTop: '1px solid var(--gray-200)',
           boxShadow: '0 -4px 12px rgba(0,0,0,0.05)', padding: '12px 24px',
