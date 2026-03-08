@@ -36,6 +36,7 @@ try
     builder.Services.AddSingleton<AuditService>();
     builder.Services.AddSingleton<DemoUserService>();
 
+
     // CORS
     builder.Services.AddCors(options =>
     {

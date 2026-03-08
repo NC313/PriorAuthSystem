@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { getPriorAuthById, approvePriorAuth, denyPriorAuth, requestAdditionalInfo, appealPriorAuth, resubmitPriorAuth } from '../api/priorAuth';
+import { analyzeWithGemini, getGeminiKey, setGeminiKey, type AiAnalysisResult } from '../api/gemini';
 import { useDemoUser } from '../hooks/useDemoUser';
 import { useToast } from '../components/Toast';
 import StatusBadge from '../components/StatusBadge';
@@ -22,6 +23,10 @@ export default function Detail() {
   const [denialReason, setDenialReason] = useState<DenialReason>('NotMedicallyNecessary');
   const [justification, setJustification] = useState('');
   const [loading, setLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<AiAnalysisResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [keyDraft, setKeyDraft] = useState('');
 
   const { data: auth, isLoading } = useQuery({
     queryKey: ['priorAuth', id],
@@ -106,7 +111,71 @@ export default function Detail() {
         <ActionButton variant="ghost" onClick={() => window.print()} className="no-print">
           Export PDF
         </ActionButton>
+        <ActionButton
+          variant="ghost"
+          className="no-print"
+          loading={aiLoading}
+          onClick={async () => {
+            if (aiResult) { setAiResult(null); return; }
+            const key = getGeminiKey();
+            if (!key) { setShowKeyInput(true); return; }
+            setAiLoading(true);
+            try {
+              const result = await analyzeWithGemini(
+                auth.patient?.fullName ?? '',
+                auth.icdCode, auth.icdDescription,
+                auth.cptCode, auth.cptDescription,
+                auth.payer?.name ?? '',
+                auth.clinicalJustification ?? '',
+                key
+              );
+              setAiResult(result);
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : 'AI analysis failed';
+              showToast(msg, 'error');
+            } finally { setAiLoading(false); }
+          }}
+        >
+          {aiResult ? 'Hide AI Analysis' : 'AI Analysis'}
+        </ActionButton>
       </div>
+
+      {/* AI Analysis Panel */}
+      {aiResult && (() => {
+        const likelihoodColor = aiResult.likelihood === 'High' ? 'var(--green)' : aiResult.likelihood === 'Medium' ? 'var(--amber)' : 'var(--red)';
+        const recColor = aiResult.recommendation === 'Approve' ? 'var(--green)' : aiResult.recommendation === 'Deny' ? 'var(--red)' : 'var(--amber)';
+        const recLabel = aiResult.recommendation === 'RequestAdditionalInfo' ? 'Request Additional Info' : aiResult.recommendation;
+        return (
+          <div style={{ background: 'var(--navy)', color: 'var(--white)', borderRadius: 'var(--radius)', padding: 20, marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <span style={{ fontSize: 16 }}>✦</span>
+              <span style={{ fontWeight: 700, fontSize: 15 }}>AI Clinical Analysis</span>
+              <span style={{ fontSize: 11, color: 'var(--gray-400)', marginLeft: 4 }}>Powered by Claude</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 16, alignItems: 'start' }}>
+              <p style={{ fontSize: 13, color: 'var(--gray-300)', lineHeight: 1.6 }}>{aiResult.assessment}</p>
+              <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                <div style={{ fontSize: 11, color: 'var(--gray-400)', marginBottom: 4 }}>LIKELIHOOD</div>
+                <div style={{ fontWeight: 700, fontSize: 18, color: likelihoodColor }}>{aiResult.likelihood}</div>
+              </div>
+              <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                <div style={{ fontSize: 11, color: 'var(--gray-400)', marginBottom: 4 }}>RECOMMENDATION</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: recColor }}>{recLabel}</div>
+              </div>
+            </div>
+            {aiResult.concerns.length > 0 && (
+              <div style={{ marginTop: 14, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray-400)', marginBottom: 8 }}>CONCERNS</div>
+                <ul style={{ paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {aiResult.concerns.map((c, i) => (
+                    <li key={i} style={{ fontSize: 12, color: 'var(--gray-300)' }}>{c}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Info Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
@@ -219,6 +288,35 @@ export default function Detail() {
       )}
 
       {/* Modals */}
+      {/* Gemini API Key Modal */}
+      {showKeyInput && (
+        <Modal title="Enter Gemini API Key" onClose={() => setShowKeyInput(false)} footer={
+          <ActionButton variant="primary" onClick={() => {
+            if (!keyDraft.trim()) return;
+            setGeminiKey(keyDraft);
+            setShowKeyInput(false);
+            setKeyDraft('');
+            showToast('API key saved', 'success');
+          }}>Save Key</ActionButton>
+        }>
+          <p style={{ fontSize: 13, color: 'var(--gray-600)', marginBottom: 12 }}>
+            Get a free key at{' '}
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{ color: 'var(--blue)' }}>
+              aistudio.google.com
+            </a>. Your key is stored only in your browser.
+          </p>
+          <input
+            type="password"
+            placeholder="AIza..."
+            value={keyDraft}
+            onChange={e => setKeyDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && keyDraft.trim()) { setGeminiKey(keyDraft); setShowKeyInput(false); setKeyDraft(''); } }}
+            autoFocus
+            style={{ width: '100%', padding: 8, borderRadius: 'var(--radius)', border: '1px solid var(--gray-200)', fontSize: 13 }}
+          />
+        </Modal>
+      )}
+
       {modal === 'approve' && (
         <Modal title="Approve Authorization" onClose={() => setModal(null)} footer={
           <ActionButton variant="primary" loading={loading} onClick={handleAction}>Confirm Approval</ActionButton>
