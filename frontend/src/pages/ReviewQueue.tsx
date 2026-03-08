@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { format, isPast, differenceInHours } from 'date-fns';
-import { getPendingAuths, approvePriorAuth, denyPriorAuth, requestAdditionalInfo } from '../api/priorAuth';
+import { getPagedPendingAuths, approvePriorAuth, denyPriorAuth, requestAdditionalInfo } from '../api/priorAuth';
 import { useDemoUser } from '../hooks/useDemoUser';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
@@ -13,6 +13,8 @@ import Modal from '../components/Modal';
 import type { PriorAuthSummaryDto, PriorAuthStatus, DenialReason } from '../types';
 
 type ModalType = 'approve' | 'deny' | 'info' | null;
+
+const PAGE_SIZE = 20;
 
 const denialReasons: { value: DenialReason; label: string }[] = [
   { value: 'NotMedicallyNecessary', label: 'Not Medically Necessary' },
@@ -43,29 +45,36 @@ export default function ReviewQueue() {
   const [denialReason, setDenialReason] = useState<DenialReason>('NotMedicallyNecessary');
   const [loading, setLoading] = useState(false);
 
-  const [search, setSearch] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState<'All' | 'High' | 'Medium' | 'Normal'>('All');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Submitted' | 'UnderReview'>('All');
+  // Filter state
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState(''); // debounced
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
 
-  const { data: pending, isLoading } = useQuery({ queryKey: ['pendingAuths'], queryFn: getPendingAuths });
+  // Debounce search: wait 400 ms after the user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
-  const reviewable = (pending ?? [])
-    .filter(a => a.status === 'Submitted' || a.status === 'UnderReview')
-    .filter(a => {
-      if (!search) return true;
-      const q = search.toLowerCase();
-      return (
-        a.patientName?.toLowerCase().includes(q) ||
-        a.payerName?.toLowerCase().includes(q) ||
-        a.cptCode?.toLowerCase().includes(q) ||
-        a.icdCode?.toLowerCase().includes(q)
-      );
-    })
-    .filter(a => statusFilter === 'All' || a.status === statusFilter)
-    .filter(a => {
-      if (priorityFilter === 'All') return true;
-      return getPriority(a).label === priorityFilter;
-    });
+  // Reset to page 1 when filters change
+  useEffect(() => { setPage(1); }, [statusFilter, priorityFilter]);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['pendingAuths', 'paged', page, search, statusFilter, priorityFilter],
+    queryFn: () => getPagedPendingAuths({
+      page,
+      pageSize: PAGE_SIZE,
+      search: search || undefined,
+      status: statusFilter || undefined,
+      priority: priorityFilter || undefined,
+    }),
+    placeholderData: keepPreviousData,
+  });
 
   const openModal = (type: ModalType, id: string) => {
     setModal(type);
@@ -96,7 +105,16 @@ export default function ReviewQueue() {
     }
   };
 
+  const clearFilters = () => {
+    setSearchInput('');
+    setSearch('');
+    setStatusFilter('');
+    setPriorityFilter('');
+    setPage(1);
+  };
+
   const canReview = user?.role === 'Reviewer' || user?.role === 'Admin';
+  const hasFilters = searchInput || statusFilter || priorityFilter;
 
   const columns: Column<PriorAuthSummaryDto>[] = [
     { key: 'priority', header: 'Priority', width: '90px', render: (r) => {
@@ -121,6 +139,9 @@ export default function ReviewQueue() {
     }},
   ];
 
+  const totalPages = data?.totalPages ?? 1;
+  const totalCount = data?.totalCount ?? 0;
+
   return (
     <div>
       <PageHeader title="Review Queue" subtitle="Authorizations requiring clinical review" />
@@ -130,8 +151,8 @@ export default function ReviewQueue() {
         <input
           type="text"
           placeholder="Search patient, payer, CPT, ICD..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
           style={{
             flex: 1, minWidth: 220, padding: '8px 12px', borderRadius: 'var(--radius)',
             border: '1px solid var(--gray-200)', fontSize: 13, outline: 'none',
@@ -139,43 +160,101 @@ export default function ReviewQueue() {
         />
         <select
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
+          onChange={e => setStatusFilter(e.target.value)}
           style={{ padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--gray-200)', fontSize: 13 }}
         >
-          <option value="All">All Statuses</option>
+          <option value="">All Statuses</option>
           <option value="Submitted">Submitted</option>
           <option value="UnderReview">Under Review</option>
         </select>
         <select
           value={priorityFilter}
-          onChange={e => setPriorityFilter(e.target.value as typeof priorityFilter)}
+          onChange={e => setPriorityFilter(e.target.value)}
           style={{ padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--gray-200)', fontSize: 13 }}
         >
-          <option value="All">All Priorities</option>
+          <option value="">All Priorities</option>
           <option value="High">High</option>
           <option value="Medium">Medium</option>
           <option value="Normal">Normal</option>
         </select>
-        {(search || statusFilter !== 'All' || priorityFilter !== 'All') && (
+        {hasFilters && (
           <button
-            onClick={() => { setSearch(''); setStatusFilter('All'); setPriorityFilter('All'); }}
+            onClick={clearFilters}
             style={{ padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--gray-200)', fontSize: 13, cursor: 'pointer', background: 'var(--gray-50)', color: 'var(--gray-600)' }}
           >
             Clear
           </button>
         )}
         <span style={{ display: 'flex', alignItems: 'center', fontSize: 12, color: 'var(--gray-400)' }}>
-          {reviewable.length} result{reviewable.length !== 1 ? 's' : ''}
+          {totalCount} result{totalCount !== 1 ? 's' : ''}
         </span>
       </div>
 
       <DataTable
         columns={columns}
-        data={reviewable}
+        data={data?.items ?? []}
         loading={isLoading}
         onRowClick={(r) => navigate(`/app/auth/${r.id}`)}
         emptyMessage="No authorizations match your filters"
       />
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginTop: 16, padding: '12px 0',
+        }}>
+          <span style={{ fontSize: 13, color: 'var(--gray-500)' }}>
+            Page {page} of {totalPages} &mdash; {totalCount} total
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <ActionButton
+              variant="ghost"
+              onClick={() => setPage(p => p - 1)}
+              disabled={!data?.hasPreviousPage}
+              style={{ padding: '6px 14px', fontSize: 13 }}
+            >
+              &larr; Prev
+            </ActionButton>
+            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+              // Show pages around current page
+              let p: number;
+              if (totalPages <= 7) {
+                p = i + 1;
+              } else if (page <= 4) {
+                p = i + 1;
+              } else if (page >= totalPages - 3) {
+                p = totalPages - 6 + i;
+              } else {
+                p = page - 3 + i;
+              }
+              return (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 'var(--radius)', fontSize: 13,
+                    border: '1px solid var(--gray-200)', cursor: 'pointer',
+                    background: p === page ? 'var(--navy)' : 'var(--white)',
+                    color: p === page ? 'var(--white)' : 'var(--gray-700)',
+                    fontWeight: p === page ? 600 : 400,
+                  }}
+                >
+                  {p}
+                </button>
+              );
+            })}
+            <ActionButton
+              variant="ghost"
+              onClick={() => setPage(p => p + 1)}
+              disabled={!data?.hasNextPage}
+              style={{ padding: '6px 14px', fontSize: 13 }}
+            >
+              Next &rarr;
+            </ActionButton>
+          </div>
+        </div>
+      )}
 
       {/* Approve Modal */}
       {modal === 'approve' && (

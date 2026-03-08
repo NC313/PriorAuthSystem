@@ -56,6 +56,31 @@ public class PriorAuthorizationsController(ISender mediator, IUnitOfWork unitOfW
         return Ok(result);
     }
 
+    [HttpGet("pending/paged")]
+    [ProducesResponseType(typeof(PagedResult<PriorAuthSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPendingPaged(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string? priority = null,
+        CancellationToken cancellationToken = default)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var (items, totalCount) = await unitOfWork.PriorAuthorizationRequests
+            .GetPagedPendingAsync(page, pageSize, search, status, priority, cancellationToken);
+
+        var summaries = items.Select(pa => new PriorAuthSummaryDto(
+            pa.Id, pa.Patient.FullName, pa.Provider.FullName, pa.Payer.PayerName,
+            pa.CptCode.Code, pa.IcdCode.Code, pa.Status.ToString(),
+            pa.CreatedAt, pa.RequiredResponseBy)).ToList();
+
+        var result = new PagedResult<PriorAuthSummaryDto>(summaries, totalCount, page, pageSize);
+        return Ok(result);
+    }
+
     [HttpPut("{id:guid}/approve")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

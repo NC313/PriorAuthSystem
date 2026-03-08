@@ -1,5 +1,18 @@
 import client from './client';
-import type { StatsDto, PriorAuthSummaryDto, PriorAuthDto, DenialReason, AuditEntry } from '../types';
+import type { StatsDto, PriorAuthSummaryDto, PriorAuthDto, DenialReason, AuditEntry, PagedResult } from '../types';
+
+export interface PendingPagedParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+  priority?: string;
+}
+
+export const getPagedPendingAuths = async (params: PendingPagedParams = {}): Promise<PagedResult<PriorAuthSummaryDto>> => {
+  const { data } = await client.get('/api/prior-authorizations/pending/paged', { params });
+  return data;
+};
 
 export interface SubmitPayload {
   patientId: string;

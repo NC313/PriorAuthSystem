@@ -8,6 +8,9 @@ public interface IPriorAuthorizationRepository
     Task<PriorAuthorizationRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PriorAuthorizationRequest>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PriorAuthorizationRequest>> GetPendingAsync(CancellationToken cancellationToken = default);
+    Task<(IReadOnlyList<PriorAuthorizationRequest> Items, int TotalCount)> GetPagedPendingAsync(
+        int page, int pageSize, string? search, string? status, string? priority,
+        CancellationToken cancellationToken = default);
     Task AddAsync(PriorAuthorizationRequest request, CancellationToken cancellationToken = default);
     Task UpdateAsync(PriorAuthorizationRequest request, CancellationToken cancellationToken = default);
 }
