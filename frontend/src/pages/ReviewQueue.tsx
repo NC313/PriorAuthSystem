@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { format, isPast, differenceInHours } from 'date-fns';
 import { getPagedPendingAuths, approvePriorAuth, denyPriorAuth, requestAdditionalInfo } from '../api/priorAuth';
@@ -36,6 +36,7 @@ function getPriority(r: PriorAuthSummaryDto) {
 
 export default function ReviewQueue() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useDemoUser();
   const { showToast } = useToast();
@@ -45,9 +46,9 @@ export default function ReviewQueue() {
   const [denialReason, setDenialReason] = useState<DenialReason>('NotMedicallyNecessary');
   const [loading, setLoading] = useState(false);
 
-  // Filter state
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState(''); // debounced
+  // Filter state — init search from URL param (e.g. ?search=ProviderName from Providers page)
+  const [searchInput, setSearchInput] = useState(() => searchParams.get('search') ?? '');
+  const [search, setSearch] = useState(() => searchParams.get('search') ?? ''); // debounced
   const [priorityFilter, setPriorityFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);

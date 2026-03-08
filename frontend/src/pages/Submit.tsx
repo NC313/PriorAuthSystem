@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { submitPriorAuth } from '../api/priorAuth';
+import { submitPriorAuth, uploadDocument } from '../api/priorAuth';
 import { getAllPatients } from '../api/patients';
 import { getAllProviders } from '../api/providers';
 import { getAllPayers } from '../api/payers';
@@ -34,6 +34,7 @@ export default function Submit() {
   const [cptCode, setCptCode] = useState('');
   const [requiredResponseBy, setRequiredResponseBy] = useState('');
   const [justification, setJustification] = useState('');
+  const [supportingDoc, setSupportingDoc] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [resultId, setResultId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +46,11 @@ export default function Submit() {
     setLoading(true);
     setError(null);
     try {
+      let docPath = '';
+      if (supportingDoc) {
+        const uploaded = await uploadDocument(supportingDoc);
+        docPath = uploaded.path;
+      }
       const newId = await submitPriorAuth({
         patientId,
         providerId,
@@ -56,7 +62,7 @@ export default function Submit() {
         cptRequiresPriorAuth: true,
         clinicalNotes: justification,
         clinicalDocumentedBy: user?.name ?? 'Unknown',
-        clinicalSupportingDocumentPath: '',
+        clinicalSupportingDocumentPath: docPath,
         requiredResponseBy: new Date(requiredResponseBy).toISOString(),
       });
       setResultId(newId);
@@ -150,9 +156,24 @@ export default function Submit() {
           </div>
 
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray-400)', letterSpacing: '0.1em', marginBottom: 12 }}>JUSTIFICATION</div>
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 20 }}>
             <label style={labelStyle}>Clinical Justification</label>
             <textarea value={justification} onChange={e => setJustification(e.target.value)} required rows={6} placeholder="Provide detailed clinical reasoning including diagnosis history, conservative treatments attempted, and medical necessity..." style={{ ...inputStyle, resize: 'vertical' as const }} />
+          </div>
+
+          <div style={{ marginBottom: 24 }}>
+            <label style={labelStyle}>Supporting Document <span style={{ fontWeight: 400, color: 'var(--gray-400)' }}>(optional, max 10 MB)</span></label>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+              onChange={e => setSupportingDoc(e.target.files?.[0] ?? null)}
+              style={{ ...inputStyle, padding: '6px 12px' }}
+            />
+            {supportingDoc && (
+              <div style={{ marginTop: 6, fontSize: 12, color: 'var(--gray-500)' }}>
+                Selected: {supportingDoc.name} ({(supportingDoc.size / 1024).toFixed(1)} KB)
+              </div>
+            )}
           </div>
 
           <ActionButton variant="primary" type="submit" fullWidth loading={loading}>Submit Authorization Request</ActionButton>

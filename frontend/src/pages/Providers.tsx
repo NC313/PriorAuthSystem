@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { getAllProviders } from '../api/providers';
 import PageHeader from '../components/PageHeader';
 import DataTable, { type Column } from '../components/DataTable';
@@ -7,6 +8,7 @@ import { useToast } from '../components/Toast';
 import type { ProviderDto } from '../types';
 
 export default function Providers() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const { data: providers, isLoading } = useQuery({ queryKey: ['providers'], queryFn: getAllProviders });
 
@@ -28,8 +30,8 @@ export default function Providers() {
     { key: 'fullName', header: 'Name', render: (r) => <span style={{ fontWeight: 500 }}>{r.fullName}</span> },
     { key: 'specialty', header: 'Specialty' },
     { key: 'email', header: 'Email' },
-    { key: 'actions', header: '', width: '100px', render: () => (
-      <ActionButton variant="ghost" style={{ padding: '4px 10px', fontSize: 11 }}>View Auths</ActionButton>
+    { key: 'actions', header: '', width: '100px', render: (r) => (
+      <ActionButton variant="ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={(e) => { e.stopPropagation(); navigate(`/app/review-queue?search=${encodeURIComponent(r.fullName)}`); }}>View Auths</ActionButton>
     )},
   ];
 

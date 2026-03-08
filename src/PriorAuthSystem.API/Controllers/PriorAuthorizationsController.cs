@@ -84,12 +84,14 @@ public class PriorAuthorizationsController(ISender mediator, IUnitOfWork unitOfW
     [HttpPut("{id:guid}/approve")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Approve(
         Guid id,
         [FromBody] ApproveRequest request,
         CancellationToken cancellationToken)
     {
+        if (!IsReviewer()) return Forbid();
         await mediator.Send(new ApprovePriorAuthCommand(id, request.ReviewerId, request.Notes), cancellationToken);
         return NoContent();
     }
@@ -97,12 +99,14 @@ public class PriorAuthorizationsController(ISender mediator, IUnitOfWork unitOfW
     [HttpPut("{id:guid}/deny")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Deny(
         Guid id,
         [FromBody] DenyRequest request,
         CancellationToken cancellationToken)
     {
+        if (!IsReviewer()) return Forbid();
         await mediator.Send(new DenyPriorAuthCommand(id, request.ReviewerId, request.Reason, request.Notes), cancellationToken);
         return NoContent();
     }
@@ -110,12 +114,14 @@ public class PriorAuthorizationsController(ISender mediator, IUnitOfWork unitOfW
     [HttpPut("{id:guid}/additional-info")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RequestAdditionalInfo(
         Guid id,
         [FromBody] AdditionalInfoRequest request,
         CancellationToken cancellationToken)
     {
+        if (!IsReviewer()) return Forbid();
         await mediator.Send(new RequestAdditionalInfoCommand(id, request.RequestedBy, request.Notes), cancellationToken);
         return NoContent();
     }
@@ -123,12 +129,14 @@ public class PriorAuthorizationsController(ISender mediator, IUnitOfWork unitOfW
     [HttpPut("{id:guid}/resubmit")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Resubmit(
         Guid id,
         [FromBody] ResubmitRequest request,
         CancellationToken cancellationToken)
     {
+        if (!IsProvider()) return Forbid();
         await mediator.Send(new ResubmitPriorAuthCommand(id, request.ResubmittedBy), cancellationToken);
         return NoContent();
     }
@@ -136,15 +144,21 @@ public class PriorAuthorizationsController(ISender mediator, IUnitOfWork unitOfW
     [HttpPut("{id:guid}/appeal")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Appeal(
         Guid id,
         [FromBody] AppealRequest request,
         CancellationToken cancellationToken)
     {
+        if (!IsProvider()) return Forbid();
         await mediator.Send(new AppealPriorAuthCommand(id, request.AppealedBy, request.ClinicalJustification), cancellationToken);
         return NoContent();
     }
+
+    private string GetRole() => HttpContext.Items["Role"] as string ?? "Provider";
+    private bool IsReviewer() { var r = GetRole(); return r is "Reviewer" or "Admin"; }
+    private bool IsProvider() { var r = GetRole(); return r is "Provider" or "Admin"; }
 
     [HttpGet("all")]
     [ProducesResponseType(typeof(IList<PriorAuthSummaryDto>), StatusCodes.Status200OK)]
@@ -196,6 +210,30 @@ public class PriorAuthorizationsController(ISender mediator, IUnitOfWork unitOfW
             avgResponseDays = Math.Round(avgResponseDays, 1),
             denialReasonBreakdown
         });
+    }
+
+    [HttpPost("upload")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadDocument(IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { detail = "No file provided." });
+
+        if (file.Length > 10 * 1024 * 1024)
+            return BadRequest(new { detail = "File exceeds 10 MB limit." });
+
+        var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+        Directory.CreateDirectory(uploadsDir);
+
+        var ext = Path.GetExtension(file.FileName);
+        var fileName = $"{Guid.NewGuid()}{ext}";
+        var filePath = Path.Combine(uploadsDir, fileName);
+
+        await using var stream = new FileStream(filePath, FileMode.Create);
+        await file.CopyToAsync(stream, cancellationToken);
+
+        return Ok(new { path = $"uploads/{fileName}", originalName = file.FileName });
     }
 
     [HttpGet("audit-log")]

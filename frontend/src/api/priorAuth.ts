@@ -79,6 +79,15 @@ export const appealPriorAuth = async (id: string, appealedBy: string, clinicalJu
   await client.put(`/api/prior-authorizations/${id}/appeal`, { appealedBy, clinicalJustification });
 };
 
+export const uploadDocument = async (file: File): Promise<{ path: string; originalName: string }> => {
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await client.post('/api/prior-authorizations/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+};
+
 export const getAuditLog = async (): Promise<AuditEntry[]> => {
   const { data } = await client.get('/api/prior-authorizations/audit-log');
   return data;
