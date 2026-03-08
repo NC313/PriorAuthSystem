@@ -1,8 +1,9 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useDemoUser } from '../hooks/useDemoUser';
-import { useSignalR } from '../hooks/useSignalR';
+import { useNotifications } from '../hooks/useNotifications';
 import { getStats } from '../api/priorAuth';
+import NotificationBell from '../components/NotificationBell';
 
 const navSections = [
   {
@@ -46,7 +47,7 @@ const pageTitles: Record<string, string> = {
 export default function AppShell() {
   const { user, logout } = useDemoUser();
   const location = useLocation();
-  const { isConnected } = useSignalR();
+  const { isConnected, notifications, unreadCount, markAllRead, clearAll } = useNotifications();
   const { data: stats } = useQuery({ queryKey: ['stats'], queryFn: getStats });
 
   const pendingCount = stats ? stats.pending : 0;
@@ -150,7 +151,12 @@ export default function AppShell() {
               }} />
               {isConnected ? 'Live Updates' : 'Connecting...'}
             </div>
-            <span style={{ fontSize: 18, color: 'var(--gray-400)', cursor: 'pointer' }}>{'\ud83d\udd14'}</span>
+            <NotificationBell
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkAllRead={markAllRead}
+              onClearAll={clearAll}
+            />
             <div style={{
               width: 32, height: 32, borderRadius: '50%', background: 'var(--navy)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
